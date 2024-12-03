@@ -36,7 +36,7 @@
     }
 </script>
 
-<div class="flex flex-col h-full">
+<div class="flex flex-col h-full w-full">
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
         {#each messages as message}
             <div class="flex flex-col {message.role === 'assistant' ? 'items-start' : 'items-end'}">
@@ -47,27 +47,33 @@
         {/each}
     </div>
 
-    <div class="border-t border-gray-800 p-4">
-        <div class="flex items-end space-x-2">
+    <div class="flex-none border-t border-gray-800 p-4 w-full">
+        <div class="flex items-start space-x-2 w-full">
             <div class="flex-1">
                 <Input
                     variant="textarea"
                     bind:value={newMessage}
                     placeholder="Type a message..."
-                    rows={1}
+                    minRows={1}
+                    maxRows={5}
                     on:keydown={handleKeyPress}
                 />
             </div>
-            <Button
-                variant="primary"
-                size="sm"
-                icon={Send}
-                disabled={!newMessage.trim()}
-                on:click={sendMessage}
-            />
-        </div>
-        <div class="mt-2 text-xs text-gray-500">
-            Press Enter to send, Shift+Enter for new line
+            <div class="flex-none">
+                <Button
+                    variant="primary"
+                    icon={Send}
+                    disabled={!newMessage.trim()}
+                    on:click={sendMessage}
+                />
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+    :global(.chat-window-input) {
+        width: 100%;
+        resize: none;
+    }
+</style>

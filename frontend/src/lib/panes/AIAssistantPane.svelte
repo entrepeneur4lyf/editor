@@ -16,11 +16,11 @@
     }
 </script>
 
-<div class="flex flex-col h-full">
-    <div class="flex items-center justify-between p-2 text-gray-400">
+<div class="flex flex-col h-full w-full">
+    <div class="flex-none flex items-center justify-between h-[34px] px-2 border-b border-gray-800 bg-gray-900">
         <div class="flex items-center space-x-2">
-            <Brain size={16} />
-            <span class="text-sm font-medium">AI Assistant</span>
+            <Brain size={16} class="text-gray-400" />
+            <span class="text-sm font-medium text-gray-300">AI Assistant</span>
         </div>
         <div class="flex items-center space-x-2">
             <div class="w-40">
@@ -32,7 +32,7 @@
             </div>
             <div class="relative">
                 <button
-                    class="p-1 hover:bg-gray-800 rounded-sm"
+                    class="p-1 hover:bg-gray-800 rounded-sm text-gray-400"
                     on:click={() => showMoreOptions = !showMoreOptions}
                 >
                     <MoreVertical size={14} />
@@ -44,15 +44,15 @@
                         {
                             icon: Settings,
                             label: 'Settings',
-                            action: () => {
+                            onClick: () => {
                                 console.log('Open settings');
                             }
                         },
                         {
                             icon: Trash2,
-                            label: 'Clear Chat',
-                            action: () => {
-                                console.log('Clear chat');
+                            label: 'Clear History',
+                            onClick: () => {
+                                console.log('Clear history');
                             }
                         }
                     ]}
@@ -60,8 +60,7 @@
             </div>
         </div>
     </div>
-
-    <div class="flex-1 overflow-auto">
+    <div class="flex-1 min-h-0 w-full">
         <ChatWindow />
     </div>
 </div>
