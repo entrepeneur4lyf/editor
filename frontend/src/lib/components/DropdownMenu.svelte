@@ -7,6 +7,7 @@
         icon: LucideIcon;
         label: string;
         onClick: () => void;
+        divider?: boolean;
     }[];
     export let position: 'top' | 'bottom' = 'bottom';
     export let align: 'left' | 'right' = 'right';
@@ -14,28 +15,35 @@
 </script>
 
 {#if show}
-    <div 
+    <div
         role="menu"
+        tabindex="0"
         on:mouseleave={() => show = false}
-        class="absolute py-1 bg-gray-800 rounded shadow-lg z-50 border border-gray-700"
-        class:right-0={align === 'right'}
-        class:left-0={align === 'left'}
-        class:mt-1={position === 'bottom'}
-        class:mb-1={position === 'top'}
-        class:bottom-full={position === 'top'}
-        style="width: {width}"
+        on:keydown={e => {
+            if (e.key === 'Escape') {
+                show = false;
+            }
+        }}
+        class="absolute {position === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'} {align === 'right' ? 'right-0' : 'left-0'} min-w-[180px] bg-gray-800 rounded-md shadow-lg border border-gray-700 py-1 z-50"
     >
         {#each items as item}
-            <button
-                class="w-full px-3 py-1.5 text-sm text-left text-gray-300 hover:bg-gray-700 flex items-center"
-                on:click={() => {
-                    item.onClick();
-                    onClose();
-                }}
-            >
-                <svelte:component this={item.icon} size={14} class="mr-2" />
-                {item.label}
-            </button>
+            {#if item.divider}
+                <div class="border-t border-gray-700 my-1" role="separator" />
+            {:else}
+                <button
+                    class="flex items-center w-full px-3 py-1.5 hover:bg-gray-700 text-gray-300 text-sm"
+                    on:click={() => {
+                        item.onClick?.();
+                        onClose();
+                    }}
+                    role="menuitem"
+                >
+                    {#if item.icon}
+                        <svelte:component this={item.icon} size={14} class="mr-2" />
+                    {/if}
+                    {item.label}
+                </button>
+            {/if}
         {/each}
     </div>
 {/if}

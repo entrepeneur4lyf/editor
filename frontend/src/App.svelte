@@ -1,6 +1,7 @@
 <script lang="ts">
   import "./app.css";
-  import { onMount, push } from 'svelte';
+  import { onMount } from 'svelte';
+  import { push } from 'svelte-spa-router';
   import Router from "svelte-spa-router";
   import Welcome from "./routes/Welcome.svelte";
   import Editor from "./routes/Editor.svelte";

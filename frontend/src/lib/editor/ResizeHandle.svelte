@@ -55,15 +55,28 @@
         showHandle = false;
         clearTimeout(hoverTimeout);
     }
+    
+    function handleKeyDown(e: KeyboardEvent) {
+        if (e.key === 'ArrowLeft') {
+            // Handle resize left
+            onResize(currentWidth - 10);
+        } else if (e.key === 'ArrowRight') {
+            // Handle resize right
+            onResize(currentWidth + 10);
+        }
+    }
 </script>
 
 <div
+    role="separator"
+    tabindex="0"
+    aria-label="Resize panel"
     class="relative w-1 hover:w-[5px] transition-all duration-200 ease-out cursor-ew-resize group select-none"
     class:border-sky-500={isDragging}
-    class:border-2={isDragging}
     on:mousedown={handleMouseDown}
     on:mouseenter={handleMouseEnter}
     on:mouseleave={handleMouseLeave}
+    on:keydown={handleKeyDown}
 >
     <div 
         class="absolute inset-0 bg-gray-700 opacity-0 group-hover:opacity-20 transition-opacity duration-200"

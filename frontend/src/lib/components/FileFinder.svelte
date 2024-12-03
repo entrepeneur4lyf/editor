@@ -161,10 +161,16 @@
     <div 
         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center pt-[20vh]"
         on:click={handleClickOutside}
+        on:keydown={handleKeyDown}
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
     >
         <div 
             class="w-[600px] bg-gray-900 rounded-lg shadow-xl border border-gray-700 overflow-hidden"
             on:click={handleClickInside}
+            on:keydown={handleKeyDown}
+            role="presentation"
         >
             <div class="relative">
                 <div class="pl-10">

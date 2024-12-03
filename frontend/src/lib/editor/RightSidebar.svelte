@@ -1,13 +1,10 @@
 <script lang="ts">
   import { Send, MoreVertical, Trash2, Settings } from 'lucide-svelte';
-  import Button from '../components/Button.svelte';
-  import Input from '../components/Input.svelte';
-  import Select from '../components/Select.svelte';
-  import DropdownMenu from '../components/DropdownMenu.svelte';
   import { onMount, onDestroy } from 'svelte';
   import { setKeyboardContext } from '../stores/keyboardStore';
+  import AIAssistantPane from '../panes/AIAssistantPane.svelte';
 
-  export let collapsed = false;
+  export let isCollapsed = false;
 
   interface Message {
     role: 'assistant' | 'user';
@@ -39,7 +36,7 @@
   }
 
   onMount(() => {
-    if (!collapsed) {
+    if (!isCollapsed) {
       setKeyboardContext('aiAssistant');
     }
   });
@@ -48,84 +45,15 @@
     setKeyboardContext('global');
   });
 
-  $: if (collapsed) {
+  $: if (isCollapsed) {
     setKeyboardContext('global');
   } else {
     setKeyboardContext('aiAssistant');
   }
 </script>
 
-{#if !collapsed}
-  <div class="bg-gray-900 h-full w-full flex flex-col overflow-hidden border-l border-gray-800">
-    <div class="h-[35px] flex items-center justify-between px-4 border-b border-gray-800">
-      <h2 class="font-medium">AI Assistant</h2>
-      <div class="flex items-center space-x-2">
-        <div class="w-40">
-          <Select
-            bind:value={selectedModel}
-            options={modelOptions}
-            variant="compact"
-          />
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={MoreVertical}
-          title="More Options"
-          on:click={() => showMoreOptions = !showMoreOptions}
-        />
-        <DropdownMenu
-          show={showMoreOptions}
-          onClose={() => showMoreOptions = false}
-          position="bottom"
-          items={[
-            {
-              icon: Settings,
-              label: 'Settings',
-              onClick: () => {
-                // TODO: Implement settings dialog
-                console.log('Open settings');
-              }
-            },
-            {
-              icon: Trash2,
-              label: 'Clear Chat',
-              onClick: () => messages = []
-            }
-          ]}
-        />
-      </div>
-    </div>
-
-    <div class="flex-grow overflow-y-auto p-4">
-      {#each messages as message, index}
-        <div class="mb-4 {message.role === 'user' ? 'text-right' : ''}">
-          <div class="inline-block bg-gray-800 rounded-sm p-2 max-w-[80%] text-gray-300">
-            {message.content}
-          </div>
-        </div>
-      {/each}
-    </div>
-
-    <div class="p-4 border-t border-gray-800">
-      <div class="flex items-start">
-        <div class="flex-grow mr-2">
-          <Input
-            variant="textarea"
-            bind:value={newMessage}
-            placeholder="Type your message..."
-            minRows={1}
-            maxRows={5}
-            onSubmit={sendMessage}
-          />
-        </div>
-        <Button
-          variant="secondary"
-          icon={Send}
-          on:click={sendMessage}
-          title="Send message"
-        />
-      </div>
-    </div>
-  </div>
-{/if}
+<div class="h-full flex flex-col bg-gray-900 border-l border-gray-800 {isCollapsed ? 'w-12' : 'w-96'}">
+  {#if !isCollapsed}
+    <AIAssistantPane isActive={true} />
+  {/if}
+</div>
