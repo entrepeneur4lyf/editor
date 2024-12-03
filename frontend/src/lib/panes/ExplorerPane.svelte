@@ -1,11 +1,14 @@
 <script lang="ts">
-    import { Files, RefreshCw, Plus } from 'lucide-svelte';
+    import { Files, RefreshCw, Plus, ChevronLeft } from 'lucide-svelte';
     import FileTreeItem from '../editor/FileTreeItem.svelte';
     import Button from '../components/Button.svelte';
     import type { FileNode } from '../../types';
     import { setKeyboardContext } from '../stores/keyboardStore';
+    import { createEventDispatcher } from 'svelte';
+    import { tooltip } from '@/lib/actions/tooltip';
 
     export let isActive = false;
+    const dispatch = createEventDispatcher();
 
     $: if (isActive) {
         setKeyboardContext('fileManager');
@@ -36,6 +39,7 @@
             expanded: false,
             children: item.children?.map(child => ({ ...child, expanded: false })) || []
         }));
+        dispatch('collapseAll');
     }
 </script>
 
@@ -46,22 +50,35 @@
             <span class="text-sm font-medium">Explorer</span>
         </div>
         <div class="flex items-center space-x-1">
-            <Button
-                variant="ghost"
-                size="sm"
-                icon={Plus}
-                title="New File"
-            />
-            <Button
-                variant="ghost"
-                size="sm"
-                icon={RefreshCw}
-                title="Refresh Explorer"
-            />
+            <div use:tooltip={{ content: "Collapse All", shortcut: "Ctrl+←" }}>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    on:click={collapseAll}
+                >
+                    <ChevronLeft size={16} />
+                </Button>
+            </div>
+            <div use:tooltip={{ content: "Refresh Explorer" }}>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                >
+                    <RefreshCw size={16} />
+                </Button>
+            </div>
+            <div use:tooltip={{ content: "New File" }}>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                >
+                    <Plus size={16} />
+                </Button>
+            </div>
         </div>
     </div>
 
-    <div class="flex-1 overflow-auto p-2">
+    <div class="flex-1 overflow-auto">
         {#each fileTree as item}
             <FileTreeItem {item} />
         {/each}

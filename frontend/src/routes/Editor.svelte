@@ -11,9 +11,9 @@
     import BottomBar from "@/lib/editor/BottomBar.svelte";
     import { fileStore, type FileItem } from '../lib/stores/fileStore';
     import { tooltip } from '@/lib/actions/tooltip';
-    import { Search } from "lucide-svelte";
-    import { File } from "lucide-svelte";
-    import { setKeyboardContext } from '../lib/stores/keyboardStore';
+    import { Search, GitBranch, Files, File, Copy, Paste, Trash2, FileEdit, ChevronLeft } from "lucide-svelte";
+    import { registerCommand, setKeyboardContext } from '../lib/stores/keyboardStore';
+    import ContextMenu from '../lib/components/ContextMenu.svelte';
 
     // Tab state
     let tabs = [
@@ -53,13 +53,15 @@
     }
 
     let rightSidebarCollapsed = false;
+    let isExplorerActive = false;
+    let isSourceControlActive = false;
 
     // Sidebar widths
     let leftSidebarWidth = 300;
     let rightSidebarWidth = 300;
 
     // Source control state
-    let modifiedFilesCount = 2; // This would be dynamically updated based on git status
+    let modifiedFilesCount = 2;
 
     function setActiveTab(id: number) {
         tabs = tabs.map((tab) => ({ ...tab, active: tab.id === id }));
@@ -73,94 +75,119 @@
         tabs = newTabs;
     }
 
-    const editorContent = `
-import React, { useState, useEffect } from 'react';
+    function toggleLeftSidebar() {
+        leftSidebarState.collapsed = !leftSidebarState.collapsed;
+        if (leftSidebarState.collapsed) {
+            isExplorerActive = false;
+            isSourceControlActive = false;
+        }
+    }
 
-function Counter() {
-  const [count, setCount] = useState(0);
+    function toggleExplorer() {
+        if (leftSidebarState.collapsed) {
+            leftSidebarState.collapsed = false;
+        }
+        isExplorerActive = !isExplorerActive;
+        if (isExplorerActive) {
+            isSourceControlActive = false;
+            leftSidebarState.activeSection = 'files';
+        }
+    }
 
-  useEffect(() => {
-    console.log('Component mounted');
-  }, []);
+    function toggleSourceControl() {
+        if (leftSidebarState.collapsed) {
+            leftSidebarState.collapsed = false;
+        }
+        isSourceControlActive = !isSourceControlActive;
+        if (isSourceControlActive) {
+            isExplorerActive = false;
+            leftSidebarState.activeSection = 'source-control';
+        }
+    }
 
-  return (
-    <main>
-      <h1>Welcome to React</h1>
-      <p>Edit <code>src/App.tsx</code> and save to reload.</p>
-      <button onClick={() => setCount(count + 1)}>
-        Clicks: {count}
-      </button>
-    </main>
-  );
-}
-
-export default Counter;
-  `.trim();
-
-    const WORKSPACE_PATH = '/home/nathanael/Documents/Trabalhos/Sideprojects/EditAI';
-
-    let isLeftSidebarCollapsed = true;
-    let isRightSidebarCollapsed = false;
-    let isSourceControlActive = false;
-    let isExplorerActive = true;
-    let showCommandPalette = false;
-    let showFileFinder = false;
+    function collapseAll() {
+        leftSidebarState.isAllCollapsed = true;
+        leftSidebarState.fileTree = leftSidebarState.fileTree.map(item => ({
+            ...item,
+            expanded: false,
+            children: item.children?.map(child => ({ ...child, expanded: false })) || []
+        }));
+    }
 
     onMount(() => {
-        setKeyboardContext('editor');
-        // For now, let's add some example files
-        const fileItems: FileItem[] = [
-            {
-                path: 'frontend/src/routes/Editor.svelte',
-                name: 'Editor.svelte',
-                type: 'file'
-            },
-            {
-                path: 'frontend/src/lib/components/FileFinder.svelte',
-                name: 'FileFinder.svelte',
-                type: 'file'
-            },
-            {
-                path: 'frontend/src/lib/stores/fileStore.ts',
-                name: 'fileStore.ts',
-                type: 'file'
-            }
-        ];
-        
-        fileStore.setFiles(fileItems);
+        registerCommand('view.toggleLeftSidebar', toggleLeftSidebar);
+        registerCommand('view.toggleExplorer', toggleExplorer);
+        registerCommand('view.toggleSourceControl', toggleSourceControl);
+        registerCommand('view.collapseAll', collapseAll);
+        setKeyboardContext('global');
     });
 
     onDestroy(() => {
         setKeyboardContext('global');
     });
+
+    // Context menu items
+    const contextMenuItems = [
+        {
+            icon: Copy,
+            label: 'Copy',
+            onClick: () => {},
+            shortcut: 'Ctrl+C'
+        },
+        {
+            icon: Paste,
+            label: 'Paste',
+            onClick: () => {},
+            shortcut: 'Ctrl+V'
+        },
+        {
+            divider: true
+        },
+        {
+            icon: FileEdit,
+            label: 'Rename',
+            onClick: () => {},
+            shortcut: 'F2'
+        },
+        {
+            icon: Trash2,
+            label: 'Delete',
+            onClick: () => {},
+            shortcut: 'Del'
+        }
+    ];
 </script>
 
 <div class="flex flex-col h-screen bg-gray-900 text-gray-300">
     <Topbar 
-        bind:isLeftSidebarCollapsed
-        bind:isRightSidebarCollapsed
+        bind:isLeftSidebarCollapsed={leftSidebarState.collapsed}
+        bind:isRightSidebarCollapsed={rightSidebarCollapsed}
         bind:isSourceControlActive
         bind:isExplorerActive
-        onToggleLeftSidebar={() => isLeftSidebarCollapsed = !isLeftSidebarCollapsed}
-        onToggleRightSidebar={() => isRightSidebarCollapsed = !isRightSidebarCollapsed}
-        onToggleSourceControl={() => isSourceControlActive = !isSourceControlActive}
-        onToggleExplorer={() => isExplorerActive = !isExplorerActive}
+        {modifiedFilesCount}
+        onToggleLeftSidebar={toggleLeftSidebar}
+        onToggleRightSidebar={() => rightSidebarCollapsed = !rightSidebarCollapsed}
+        onToggleExplorer={toggleExplorer}
+        onToggleSourceControl={toggleSourceControl}
         showCommandPalette={() => showCommandPalette = true}
         showFileFinder={() => showFileFinder = true}
     />
-    
+
     <div class="flex flex-1 overflow-hidden">
-        {#if !isLeftSidebarCollapsed}
+        {#if !leftSidebarState.collapsed}
             <div style="width: {leftSidebarWidth}px" class="flex-shrink-0">
-                <LeftSidebar state={leftSidebarState} />
+                <LeftSidebar 
+                    state={leftSidebarState} 
+                    on:collapseAll={collapseAll}
+                />
             </div>
             <ResizeHandle 
                 side="left" 
                 currentWidth={leftSidebarWidth}
-                onResize={(width) => leftSidebarWidth = width} 
+                onResize={(width) => leftSidebarWidth = width}
             />
         {/if}
-        
+
         <main class="flex-1 flex flex-col min-w-0 max-w-full">
             <div class="flex items-center border-b border-gray-800 bg-gray-900">
                 <div class="flex overflow-x-auto">
@@ -191,17 +218,25 @@ export default Counter;
             </div>
         </main>
         
-        {#if !isRightSidebarCollapsed}
+        {#if !rightSidebarCollapsed}
             <ResizeHandle 
                 side="right" 
                 currentWidth={rightSidebarWidth}
-                onResize={(width) => rightSidebarWidth = width} 
+                onResize={(width) => rightSidebarWidth = width}
             />
             <div style="width: {rightSidebarWidth}px" class="flex-shrink-0">
-                <RightSidebar collapsed={isRightSidebarCollapsed} />
+                <RightSidebar collapsed={rightSidebarCollapsed} />
             </div>
         {/if}
     </div>
-    
+
     <BottomBar />
 </div>
+
+<ContextMenu items={contextMenuItems} />
+
+<style>
+    :global(.group:hover .opacity-0) {
+        opacity: 1;
+    }
+</style>

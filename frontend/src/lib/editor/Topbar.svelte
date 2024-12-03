@@ -24,6 +24,7 @@
     <button
       on:click={onToggleLeftSidebar}
       class="p-2 hover:bg-gray-800 rounded-sm text-gray-400 hover:text-gray-300"
+      use:tooltip={{ content: "Toggle Sidebar", shortcut: "Ctrl+B" }}
     >
       {#if isLeftSidebarCollapsed}
         <ChevronRight size={16} />
@@ -34,14 +35,16 @@
 
     <button
       on:click={onToggleExplorer}
-      class="p-2 hover:bg-gray-800 rounded-sm relative {isExplorerActive ? 'bg-gray-800 text-gray-200' : 'text-gray-400'}"
+      class="p-2 hover:bg-gray-800 rounded-sm relative {isExplorerActive && !isLeftSidebarCollapsed ? 'bg-gray-800 text-gray-200' : 'text-gray-400'}"
+      use:tooltip={{ content: "Explorer", shortcut: "Ctrl+Shift+E" }}
     >
       <Files size={16} />
     </button>
 
     <button
       on:click={onToggleSourceControl}
-      class="p-2 hover:bg-gray-800 rounded-sm relative {isSourceControlActive ? 'bg-gray-800 text-gray-200' : 'text-gray-400'}"
+      class="p-2 hover:bg-gray-800 rounded-sm relative {isSourceControlActive && !isLeftSidebarCollapsed ? 'bg-gray-800 text-gray-200' : 'text-gray-400'}"
+      use:tooltip={{ content: "Source Control", shortcut: "Ctrl+Shift+G" }}
     >
       <GitBranch size={16} />
       {#if modifiedFilesCount > 0}

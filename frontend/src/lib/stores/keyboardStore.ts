@@ -87,6 +87,36 @@ const defaultKeybindings: KeyBindingConfig = {
         },
         action: () => {}
     },
+    'view.toggleExplorer': {
+        defaultBinding: {
+            key: 'e',
+            modifiers: ['ctrl', 'shift'],
+            description: 'Toggle Explorer',
+            category: 'View',
+            context: ['global']
+        },
+        action: () => {}
+    },
+    'view.toggleSourceControl': {
+        defaultBinding: {
+            key: 'g',
+            modifiers: ['ctrl', 'shift'],
+            description: 'Toggle Source Control',
+            category: 'View',
+            context: ['global']
+        },
+        action: () => {}
+    },
+    'view.collapseAll': {
+        defaultBinding: {
+            key: 'ArrowLeft',
+            modifiers: ['ctrl'],
+            description: 'Collapse All',
+            category: 'View',
+            context: ['fileManager']
+        },
+        action: () => {}
+    },
 
     // AI Assistant shortcuts
     'ai.sendMessage': {
