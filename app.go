@@ -15,6 +15,7 @@ type App struct {
 	ctx      context.Context
 	projects *service.ProjectsService
 	files    *service.FileService
+	config   *service.ConfigService
 }
 
 // NewApp creates a new App application struct
@@ -36,6 +37,12 @@ func (a *App) startup(ctx context.Context) {
 	// Initialize services
 	a.projects = service.NewProjectsService(dbConn)
 	a.files = service.NewFileService()
+
+	config, err := service.NewConfigService()
+	if err != nil {
+		panic(err)
+	}
+	a.config = config
 }
 
 // GetRecentProjects returns the list of recent projects
@@ -100,4 +107,15 @@ func (a *App) SearchFiles(dirPath, query string) ([]*service.FileNode, error) {
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
+}
+
+// GetEditorConfig returns the current editor configuration
+func (a *App) GetEditorConfig() (*service.EditorConfig, error) {
+	return a.config.GetConfig(), nil
+}
+
+// OpenConfigFile opens the config file in the editor
+func (a *App) OpenConfigFile() (string, error) {
+	path := a.config.OpenConfigFile()
+	return path, nil
 }

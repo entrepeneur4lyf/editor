@@ -1,6 +1,7 @@
 import { writable, derived, get } from 'svelte/store';
-import type { KeyBinding, KeyBindingConfig, KeyboardContext } from '../types/keyboard';
+import type { KeyBinding, KeyBindingConfig, KeyboardContext } from '@/types/keyboard';
 import { fileStore } from './fileStore';
+import { OpenConfigFile } from '@/lib/wailsjs/go/main/App';
 
 // Default keybindings configuration
 const defaultKeybindings: KeyBindingConfig = {
@@ -225,6 +226,25 @@ const defaultKeybindings: KeyBindingConfig = {
                 await fileStore.saveFile(fileStore.getActiveFilepath() || '');
             } catch (error) {
                 console.error('Error saving file:', error);
+            }
+        }
+    },
+    'config.open': {
+        defaultBinding: {
+            key: '',
+            modifiers: [],
+            description: 'Open Editor Configuration',
+            category: 'Settings',
+            context: ['global']
+        },
+        action: async () => {
+            try {
+                const configPath = await OpenConfigFile();
+                if (configPath) {
+                    await fileStore.openFile(configPath);
+                }
+            } catch (error) {
+                console.error('Error opening config file:', error);
             }
         }
     }

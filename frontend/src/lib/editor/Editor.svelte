@@ -2,10 +2,31 @@
     import * as monaco from 'monaco-editor';
     import { onMount, onDestroy } from 'svelte';
     import { fileStore } from '@/stores/fileStore';
+    import { editorConfigStore } from '@/stores/editorConfigStore';
 
     let editorContainer: HTMLElement;
     let editor: monaco.editor.IStandaloneCodeEditor;
     let currentModel: monaco.editor.ITextModel | null = null;
+
+    // Load editor config on mount
+    onMount(async () => {
+        await editorConfigStore.loadConfig();
+    });
+
+    // Watch for config changes
+    $: if (editor && $editorConfigStore) {
+        const config = $editorConfigStore.editor;
+        editor.updateOptions({
+            theme: config.theme,
+            fontSize: config.fontSize,
+            tabSize: config.tabSize,
+            wordWrap: config.wordWrap ? 'on' : 'off',
+            lineNumbers: config.lineNumbers ? 'on' : 'off',
+            minimap: {
+                enabled: config.minimap
+            }
+        });
+    }
 
     function getLanguageFromPath(path: string): string {
         const ext = path.split('.').pop()?.toLowerCase() || '';
@@ -89,19 +110,19 @@
     }
 
     onMount(() => {
-        // Create editor
+        // Create editor with initial config
+        const config = $editorConfigStore.editor;
         editor = monaco.editor.create(editorContainer, {
-            theme: 'vs-dark',
-            automaticLayout: true,
+            theme: config.theme,
+            fontSize: config.fontSize,
+            tabSize: config.tabSize,
+            wordWrap: config.wordWrap ? 'on' : 'off',
+            lineNumbers: config.lineNumbers ? 'on' : 'off',
             minimap: {
-                enabled: false
+                enabled: config.minimap
             },
+            automaticLayout: true,
             scrollBeyondLastLine: false,
-            fontSize: 14,
-            tabSize: 4,
-            insertSpaces: true,
-            wordWrap: 'on',
-            lineNumbers: 'on',
             glyphMargin: true,
             folding: true,
             lineDecorationsWidth: 10,

@@ -6,6 +6,10 @@ export function AddProject(arg1, arg2) {
   return window['go']['main']['App']['AddProject'](arg1, arg2);
 }
 
+export function GetEditorConfig() {
+  return window['go']['main']['App']['GetEditorConfig']();
+}
+
 export function GetFileContent(arg1) {
   return window['go']['main']['App']['GetFileContent'](arg1);
 }
@@ -24,6 +28,10 @@ export function Greet(arg1) {
 
 export function LoadDirectoryContents(arg1) {
   return window['go']['main']['App']['LoadDirectoryContents'](arg1);
+}
+
+export function OpenConfigFile() {
+  return window['go']['main']['App']['OpenConfigFile']();
 }
 
 export function OpenProjectFolder() {

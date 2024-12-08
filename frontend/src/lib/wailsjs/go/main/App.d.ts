@@ -5,6 +5,8 @@ import {service} from '../models';
 
 export function AddProject(arg1:string,arg2:string):Promise<db.Project>;
 
+export function GetEditorConfig():Promise<service.EditorConfig>;
+
 export function GetFileContent(arg1:string):Promise<string>;
 
 export function GetProjectFiles(arg1:string):Promise<service.FileNode>;
@@ -14,6 +16,8 @@ export function GetRecentProjects():Promise<Array<db.Project>>;
 export function Greet(arg1:string):Promise<string>;
 
 export function LoadDirectoryContents(arg1:string):Promise<service.FileNode>;
+
+export function OpenConfigFile():Promise<string>;
 
 export function OpenProjectFolder():Promise<string>;
 
