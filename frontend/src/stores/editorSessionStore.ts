@@ -1,19 +1,11 @@
 import { writable } from 'svelte/store';
 
 interface EditorSession {
-    vim: {
-        enabled: boolean;
-        mode: string;
-        statusBarElement: HTMLElement | null;
-    };
+    // Add any non-vim related session state here if needed
 }
 
 const defaultSession: EditorSession = {
-    vim: {
-        enabled: false,
-        mode: 'normal',
-        statusBarElement: null
-    }
+    // Add default values for any session state
 };
 
 function createEditorSessionStore() {
@@ -21,41 +13,6 @@ function createEditorSessionStore() {
 
     return {
         subscribe,
-        
-        // Toggle Vim mode
-        toggleVim: (enabled: boolean) => {
-            update(session => ({
-                ...session,
-                vim: {
-                    ...session.vim,
-                    enabled
-                }
-            }));
-        },
-
-        // Update Vim mode
-        setVimMode: (mode: string) => {
-            update(session => ({
-                ...session,
-                vim: {
-                    ...session.vim,
-                    mode
-                }
-            }));
-        },
-
-        // Set status bar element
-        setVimStatusBar: (element: HTMLElement | null) => {
-            update(session => ({
-                ...session,
-                vim: {
-                    ...session.vim,
-                    statusBarElement: element
-                }
-            }));
-        },
-
-        // Reset session
         reset: () => set(defaultSession)
     };
 }
