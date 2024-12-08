@@ -105,6 +105,14 @@
         
         setKeyboardContext('editor');
         registerCommand('file.showFileFinder', () => showFileFinder = true);
+        
+        // Register sidebar toggle commands
+        registerCommand('view.toggleLeftSidebar', () => {
+            leftSidebarState.collapsed = !leftSidebarState.collapsed;
+        });
+        registerCommand('view.toggleRightSidebar', () => {
+            rightSidebarCollapsed = !rightSidebarCollapsed;
+        });
     });
 
     onDestroy(() => {

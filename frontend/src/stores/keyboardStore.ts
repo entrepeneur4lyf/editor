@@ -82,7 +82,7 @@ const defaultKeybindings: KeyBindingConfig = {
     'view.toggleRightSidebar': {
         defaultBinding: {
             key: 'b',
-            modifiers: ['ctrl', 'shift'],
+            modifiers: ['ctrl', 'alt'],
             description: 'Toggle Right Sidebar',
             category: 'View',
             context: ['global']
