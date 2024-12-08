@@ -1,12 +1,18 @@
 <script lang="ts">
-    import { onMount, createEventDispatcher, afterUpdate, onDestroy } from 'svelte';
-    import { Search, File, Folder } from 'lucide-svelte';
-    import Input from './Input.svelte';
-    import { setKeyboardContext } from '@/stores/keyboardStore';
-    import { SearchFiles } from '@/lib/wailsjs/go/main/App';
-    import { projectStore } from '@/stores/project';
-    import { fileStore } from '@/stores/fileStore';
-    import type { service } from '../wailsjs/go/models';
+    import {
+        onMount,
+        createEventDispatcher,
+        afterUpdate,
+        onDestroy,
+    } from "svelte";
+    import { Search, File, Folder } from "lucide-svelte";
+    import Input from "./Input.svelte";
+    import { setKeyboardContext } from "@/stores/keyboardStore";
+    import { SearchFiles } from "@/lib/wailsjs/go/main/App";
+    import { projectStore } from "@/stores/project";
+    import { fileStore } from "@/stores/fileStore";
+    import { focusStore } from "@/stores/focusStore";
+    import type { service } from "../wailsjs/go/models";
 
     const dispatch = createEventDispatcher<{
         close: void;
@@ -16,7 +22,7 @@
     export let show = false;
     let previousShow = show;
     let vimModeEnabled = false;
-    let searchQuery = '';
+    let searchQuery = "";
     let results: service.FileNode[] = [];
     let selectedIndex = 0;
     let loading = false;
@@ -26,6 +32,7 @@
     let currentSearch: Promise<any> | null = null;
     let searchCounter = 0;
     let mounted = false;
+    let finderId = focusStore.generateId('file-finder');
 
     // Reset all states
     function resetState() {
@@ -48,13 +55,19 @@
         }
 
         try {
-            const thisSearch = SearchFiles($projectStore.currentProject!.Path, query);
+            const thisSearch = SearchFiles(
+                $projectStore.currentProject!.Path,
+                query,
+            );
             currentSearch = thisSearch;
 
             const searchResults = await thisSearch;
             if (counter === searchCounter && show) {
                 results = searchResults || [];
-                selectedIndex = Math.min(selectedIndex, Math.max(0, results.length - 1));
+                selectedIndex = Math.min(
+                    selectedIndex,
+                    Math.max(0, results.length - 1),
+                );
             }
         } catch (err) {
             if (counter === searchCounter && show) {
@@ -72,13 +85,15 @@
     $: {
         if (show !== previousShow) {
             if (show) {
-                setKeyboardContext('fileFinder');
-                searchQuery = '';
+                setKeyboardContext("fileFinder");
+                searchQuery = "";
+                focusStore.focus("file-finder", finderId);
                 if (inputElement) {
                     setTimeout(() => inputElement.focus(), 0);
                 }
             } else {
-                setKeyboardContext('global');
+                setKeyboardContext("global");
+                focusStore.restorePrevious();
             }
             resetState();
             previousShow = show;
@@ -95,9 +110,9 @@
 
             searchCounter++; // Increment counter for new search attempt
             const currentCounter = searchCounter;
-            
+
             // Don't trim the query - allow spaces
-            if (searchQuery === '') {
+            if (searchQuery === "") {
                 resetState();
             } else {
                 loading = true;
@@ -105,7 +120,10 @@
                 debounceTimer = setTimeout(() => {
                     if (show && currentCounter === searchCounter) {
                         // Remove leading and trailing and inner spaces
-                        performSearch(searchQuery.trim().replace(/\s+/g, ''), currentCounter);
+                        performSearch(
+                            searchQuery.trim().replace(/\s+/g, ""),
+                            currentCounter,
+                        );
                     } else {
                         loading = false;
                     }
@@ -118,34 +136,35 @@
         if (!show) return;
 
         // Enable vim mode when Alt+J are pressed together
-        if (event.altKey && event.key.toLowerCase() === 'j') {
+        if (event.altKey && event.key.toLowerCase() === "j") {
             event.preventDefault();
             vimModeEnabled = true;
             return;
         }
 
-        switch(event.key) {
-            case 'ArrowDown':
-            case 'j':
-                if (event.key === 'j' && !vimModeEnabled) break;
+        switch (event.key) {
+            case "ArrowDown":
+            case "j":
+                if (event.key === "j" && !vimModeEnabled) break;
                 event.preventDefault();
                 selectedIndex = (selectedIndex + 1) % results.length;
                 break;
-            case 'ArrowUp':
-            case 'k':
-                if (event.key === 'k' && !vimModeEnabled) break;
+            case "ArrowUp":
+            case "k":
+                if (event.key === "k" && !vimModeEnabled) break;
                 event.preventDefault();
-                selectedIndex = selectedIndex - 1 < 0
-                    ? results.length - 1
-                    : selectedIndex - 1;
+                selectedIndex =
+                    selectedIndex - 1 < 0
+                        ? results.length - 1
+                        : selectedIndex - 1;
                 break;
-            case 'Enter':
+            case "Enter":
                 event.preventDefault();
                 if (results[selectedIndex]) {
                     handleSelect(results[selectedIndex]);
                 }
                 break;
-            case 'Escape':
+            case "Escape":
                 event.preventDefault();
                 closeFileFinder();
                 break;
@@ -153,7 +172,7 @@
     }
 
     async function handleSelect(file: any) {
-        if (file.type === 'file') {
+        if (file.type === "file") {
             await fileStore.openFile(file.path);
         }
         closeFileFinder();
@@ -161,21 +180,22 @@
 
     function closeFileFinder() {
         resetState();
-        searchQuery = '';
+        searchQuery = "";
         selectedIndex = 0;
         show = false;
-        dispatch('close');
+        focusStore.restorePrevious();
+        dispatch("close");
     }
 
     function handleClickOutside(event: MouseEvent) {
         const target = event.target as HTMLElement;
-        if (target.classList.contains('bg-opacity-50')) {
+        if (target.classList.contains("bg-opacity-50")) {
             closeFileFinder();
         }
     }
 
     function removeBasedir(path: string) {
-        return path.replace($projectStore.currentProject!.Path + '/', '');
+        return path.replace($projectStore.currentProject!.Path + "/", "");
     }
 
     onMount(() => {
@@ -188,7 +208,7 @@
     onDestroy(() => {
         mounted = false;
         resetState();
-        setKeyboardContext('global');
+        setKeyboardContext("global");
     });
 </script>
 
@@ -197,7 +217,10 @@
         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center pt-[20vh]"
         on:click={handleClickOutside}
     >
-        <button class="w-[600px] bg-gray-900 rounded-lg shadow-xl border border-gray-700 overflow-hidden" on:click|stopPropagation>
+        <button
+            class="w-[600px] bg-gray-900 rounded-lg shadow-xl border border-gray-700 overflow-hidden"
+            on:click|stopPropagation
+        >
             <div class="relative">
                 <div class="pl-10">
                     <Input
@@ -209,7 +232,9 @@
                         autofocus
                     />
                 </div>
-                <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <div
+                    class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                >
                     <Search size={16} />
                 </div>
             </div>
@@ -231,14 +256,18 @@
                             on:click={() => handleSelect(file)}
                         >
                             <svelte:component
-                                this={file.type === 'directory' ? Folder : File}
+                                this={file.type === "directory" ? Folder : File}
                                 size={16}
                                 class="text-gray-400 flex-shrink-0"
                             />
                             <div class="flex flex-col min-w-0">
-                                <span class="text-gray-300 font-medium truncate">{file.name}</span>
+                                <span class="text-gray-300 font-medium truncate"
+                                    >{file.name}</span
+                                >
                                 {#if file.path}
-                                    <span class="text-gray-500 text-sm truncate">{removeBasedir(file.path)}</span>
+                                    <span class="text-gray-500 text-sm truncate"
+                                        >{removeBasedir(file.path)}</span
+                                    >
                                 {/if}
                             </div>
                         </button>

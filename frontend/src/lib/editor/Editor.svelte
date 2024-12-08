@@ -3,8 +3,10 @@
     import { onMount, onDestroy } from 'svelte';
     import { fileStore } from '@/stores/fileStore';
     import { editorConfigStore } from '@/stores/editorConfigStore';
+    import { editorStateStore } from '@/stores/editorStateStore';
     import { initVimMode, VimMode } from 'monaco-vim';
     import { createEventDispatcher } from 'svelte';
+    import { focusStore } from '@/stores/focusStore';
 
     const dispatch = createEventDispatcher();
 
@@ -14,11 +16,98 @@
     let vimMode: { dispose: () => void } | null = null;
     let vimStatusBar: HTMLElement;
     let vimEnabled = false;
+    let editorId = focusStore.generateId('editor');
+    let previousPath: string | null = null;
+    let editorReady = false;
+    let editorInitialized = false;
 
     // Load editor config on mount
     onMount(async () => {
         await editorConfigStore.loadConfig();
+
+        // Create editor with initial config
+        const config = $editorConfigStore.editor;
+
+        editor = monaco.editor.create(editorContainer, {
+            theme: config.theme,
+            fontSize: config.fontSize,
+            tabSize: config.tabSize,
+            wordWrap: config.wordWrap ? 'on' : 'off',
+            lineNumbers: config.lineNumbers ? (config.relativeLines ? 'relative' : 'on') : 'off',
+            minimap: {
+                enabled: config.minimap
+            },
+            automaticLayout: true,
+            scrollBeyondLastLine: false,
+            glyphMargin: true,
+            folding: true,
+            lineDecorationsWidth: 10,
+            renderLineHighlight: 'all',
+            scrollbar: {
+                verticalScrollbarSize: 10,
+                horizontalScrollbarSize: 10
+            },
+            stickyScroll: {
+                enabled: config.stickyScroll
+            }
+        });
+
+        // Initialize vim mode if enabled in config
+        vimEnabled = config.vim?.enabled || false;
+        if (vimEnabled) {
+            vimMode = initVimMode(editor, vimStatusBar);
+            
+            // Define custom :w command for saving
+            VimMode.Vim.defineEx('write', 'w', () => {
+                console.log('Saving file...');
+                fileStore.saveFile(fileStore.getActiveFilepath() || '');
+            });
+
+            // Setup Ctrl+P for file finder using action system
+            VimMode.Vim.defineAction('showFileFinder', (_cm: any) => {
+                dispatch('showFileFinder');
+            });
+            VimMode.Vim.mapCommand('<C-p>', 'action', 'showFileFinder', {}, { context: 'normal' });
+        }
+
+        // Wait a bit for editor to fully initialize
+        setTimeout(() => {
+            editorInitialized = true;
+            editorReady = true;
+
+            // Set initial focus
+            focusStore.focus('editor', editorId);
+            editor.focus();
+
+            // Initial file state restore if needed
+            if ($fileStore.activeFilePath) {
+                handleFileChange($fileStore.activeFilePath);
+            }
+        }, 100);
     });
+
+    // Watch for file changes and save/restore editor state
+    function handleFileChange(newPath: string) {
+        if (!editor || !editorReady || !editorInitialized || newPath === previousPath) return;
+
+        // Save state of previous file before switching
+        if (previousPath) {
+            editorStateStore.saveState(previousPath, editor);
+        }
+
+        // Restore state of current file after a short delay to ensure model is ready
+        setTimeout(() => {
+            if (editor && editorInitialized) {
+                editorStateStore.restoreState(newPath, editor);
+                previousPath = newPath;
+            }
+        }, 100);
+    }
+
+    // Watch for file changes
+    $: if ($fileStore.activeFilePath) {
+        handleFileChange($fileStore.activeFilePath);
+    }
 
     // Watch for config changes
     $: if (editor && $editorConfigStore) {
@@ -28,7 +117,7 @@
             fontSize: config.fontSize,
             tabSize: config.tabSize,
             wordWrap: config.wordWrap ? 'on' : 'off',
-            lineNumbers: config.lineNumbers ? 'on' : 'off',
+            lineNumbers: config.lineNumbers ? (config.relativeLines ? 'relative' : 'on') : 'off',
             minimap: {
                 enabled: config.minimap
             }
@@ -134,62 +223,17 @@
         return () => disposable.dispose();
     }
 
-    onMount(() => {
-        // Create editor with initial config
-        const config = $editorConfigStore.editor;
-
-        editor = monaco.editor.create(editorContainer, {
-            theme: config.theme,
-            fontSize: config.fontSize,
-            tabSize: config.tabSize,
-            wordWrap: config.wordWrap ? 'on' : 'off',
-            lineNumbers: config.lineNumbers ? 'on' : 'off',
-            minimap: {
-                enabled: config.minimap
-            },
-            automaticLayout: true,
-            scrollBeyondLastLine: false,
-            glyphMargin: true,
-            folding: true,
-            lineDecorationsWidth: 10,
-            renderLineHighlight: 'all',
-            scrollbar: {
-                verticalScrollbarSize: 10,
-                horizontalScrollbarSize: 10
-            }
-        });
-
-        // Initialize vim mode if enabled in config
-        vimEnabled = config.vim?.enabled || false;
-        if (vimEnabled) {
-            vimMode = initVimMode(editor, vimStatusBar);
-            
-            // Define custom :w command for saving
-            VimMode.Vim.defineEx('write', 'w', () => {
-                console.log('Saving file...');
-                fileStore.saveFile(fileStore.getActiveFilepath() || '');
-            });
-
-            // Setup Ctrl+P for file finder using action system
-            VimMode.Vim.defineAction('showFileFinder', (_cm: any) => {
-                dispatch('showFileFinder');
-            });
-            VimMode.Vim.mapCommand('<C-p>', 'action', 'showFileFinder', {}, { context: 'normal' });
+    // Focus handling
+    function handleEditorFocus() {
+        if (editor) {
+            focusStore.focus('editor', editorId);
+            editor.focus();
         }
-
-        // Set initial content if there's an active file
-        if ($fileStore.activeFilePath) {
-            const file = $fileStore.openFiles.get($fileStore.activeFilePath);
-            if (file) updateEditor(file);
-        }
-    });
+    }
 
     onDestroy(() => {
         if (vimMode) {
             vimMode.dispose();
-        }
-        if (currentModel) {
-            currentModel.dispose();
         }
         if (editor) {
             editor.dispose();
@@ -201,6 +245,7 @@
     <div
         bind:this={editorContainer}
         class="w-full flex-1"
+        on:focus={handleEditorFocus}
     />
     <div 
         bind:this={vimStatusBar}
