@@ -1,4 +1,4 @@
-# Edit4I 🚀
+# Edit4I 🚀 (ed - di - tai)
 
 An AI-powered agentic editor that enhances your coding experience with intelligent context understanding and seamless workflow integration.
 An editor that increases your productivity by 4x (4x increase, get it? 😉).
@@ -15,6 +15,19 @@ I'm very frustaded with some editors feature gating a bunch of stuff in their ow
 
 We'll, just complain won't solve anything. Let's build something better!
 
+## Stack 🛠️
+
+- **Frontend**
+  - ⚡ SvelteJS - Reactive UI framework
+  - 📝 Monaco - VS Code's editor component
+  - 🌳 Tree-sitter - Robust parsing engine
+  
+- **Backend**
+  - 🚀 Go - Performance-focused backend
+  - 🔄 Wails - Native desktop integration (multiplataform)
+
+EditAI combines these technologies to create a high-performance editor with native capabilities while maintaining the flexibility of web technologies. The Go backend enables efficient AI pipeline processing and local workload handling, while SvelteJS and Monaco provide a modern, responsive editing experience.
+
 ## Features ✨
 
 - **Automatic Context Generation** 🧠: Intelligently understands your codebase and provides relevant context for smarter coding assistance
@@ -22,7 +35,6 @@ We'll, just complain won't solve anything. Let's build something better!
 - **Git Based Workflow** 🔄: Seamless integration with Git for efficient version control and collaboration
 - **Terminal Execution and Debugging** 💻: Built-in terminal support for running commands and debugging directly within the editor
 - **Pinned Prompts** 📌: AI convention-based system for consistent and customizable AI interactions
-
 
 ## Roadmap 🛣️
 
@@ -74,6 +86,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.]
 
 ![screenshot-2024-12-03-10-40-10](https://github.com/user-attachments/assets/2d36dd1f-c0a9-4cd4-83a6-f5064c49a735)
 > With `Alt + J`, you can use "J" and "K" to move up and down. Yes, I'm a fellow vimmer 😎
+
+
+**Fuzzy finder**
+
+![screenshot-2024-12-03-11-27-56](https://github.com/user-attachments/assets/e18e7d38-aaf5-43e4-b5a9-6c1e932059eb)
 
 
 ## License
