@@ -3,10 +3,14 @@
     import { onMount, onDestroy } from 'svelte';
     import { fileStore } from '@/stores/fileStore';
     import { editorConfigStore } from '@/stores/editorConfigStore';
+    import { editorSessionStore } from '@/stores/editorSessionStore';
+    import { initVimMode } from 'monaco-vim';
 
     let editorContainer: HTMLElement;
     let editor: monaco.editor.IStandaloneCodeEditor;
     let currentModel: monaco.editor.ITextModel | null = null;
+    let vimMode: { dispose: () => void } | null = null;
+    let vimStatusBar: HTMLElement;
 
     // Load editor config on mount
     onMount(async () => {
@@ -26,6 +30,25 @@
                 enabled: config.minimap
             }
         });
+
+        // Handle Vim mode changes from config
+        if (config.vim.enabled !== $editorSessionStore.vim.enabled) {
+            editorSessionStore.toggleVim(config.vim.enabled);
+        }
+    }
+
+    // Watch for Vim mode changes
+    $: if (editor && $editorSessionStore.vim.enabled !== !!vimMode) {
+        if ($editorSessionStore.vim.enabled && !vimMode) {
+            // Enable Vim mode
+            vimMode = initVimMode(editor, vimStatusBar);
+            editorSessionStore.setVimStatusBar(vimStatusBar);
+        } else if (!$editorSessionStore.vim.enabled && vimMode) {
+            // Disable Vim mode
+            vimMode.dispose();
+            vimMode = null;
+            editorSessionStore.setVimStatusBar(null);
+        }
     }
 
     function getLanguageFromPath(path: string): string {
@@ -141,6 +164,9 @@
     });
 
     onDestroy(() => {
+        if (vimMode) {
+            vimMode.dispose();
+        }
         if (currentModel) {
             currentModel.dispose();
         }
@@ -150,7 +176,15 @@
     });
 </script>
 
-<div
-    bind:this={editorContainer}
-    class="w-full h-full"
-/>
+<div class="flex flex-col h-full">
+    <div
+        bind:this={editorContainer}
+        class="w-full flex-1"
+    />
+    {#if $editorSessionStore.vim.enabled}
+        <div 
+            bind:this={vimStatusBar}
+            class="h-6 bg-gray-800 border-t border-gray-700 px-2 flex items-center text-sm"
+        />
+    {/if}
+</div>

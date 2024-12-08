@@ -11,7 +11,11 @@ const defaultConfig: EditorConfig = {
         tabSize: 4,
         wordWrap: true,
         lineNumbers: true,
-        minimap: false
+        minimap: false,
+        vim: {
+            enabled: false,
+            mode: 'normal'
+        }
     },
     keyboard: {
         customBindings: {}

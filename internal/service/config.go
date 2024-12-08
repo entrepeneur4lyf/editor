@@ -16,6 +16,10 @@ type EditorConfig struct {
 		WordWrap    bool   `json:"wordWrap" mapstructure:"wordWrap"`
 		LineNumbers bool   `json:"lineNumbers" mapstructure:"lineNumbers"`
 		Minimap     bool   `json:"minimap" mapstructure:"minimap"`
+		Vim         struct {
+			Enabled     bool   `json:"enabled" mapstructure:"enabled"`
+			DefaultMode string `json:"defaultMode" mapstructure:"defaultMode"`
+		} `json:"vim" mapstructure:"vim"`
 	} `json:"editor" mapstructure:"editor"`
 	Keyboard struct {
 		CustomBindings map[string]KeyBinding `json:"customBindings" mapstructure:"customBindings"`
@@ -94,6 +98,9 @@ func createDefaultConfig(path string) error {
   wordWrap: true
   lineNumbers: true
   minimap: false
+  vim:
+    enabled: false
+    mode: normal
 
 keyboard:
   customBindings: {}`
