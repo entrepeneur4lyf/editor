@@ -3,7 +3,7 @@
     import { onMount, onDestroy } from 'svelte';
     import { fileStore } from '@/stores/fileStore';
     import { editorConfigStore } from '@/stores/editorConfigStore';
-    import { initVimMode } from 'monaco-vim';
+    import { initVimMode, VimMode } from 'monaco-vim';
     import { createEventDispatcher } from 'svelte';
 
     const dispatch = createEventDispatcher();
@@ -142,6 +142,13 @@
     onMount(() => {
         // Create editor with initial config
         const config = $editorConfigStore.editor;
+
+        // Register the showFileFinder command
+        monaco.editor.addCommand({
+            id: 'editor.showFileFinder',
+            run: () => dispatch('showFileFinder')
+        });
+
         editor = monaco.editor.create(editorContainer, {
             theme: config.theme,
             fontSize: config.fontSize,
@@ -168,6 +175,12 @@
         if (vimEnabled) {
             window.addEventListener('keydown', handleKeydown, true);
             vimMode = initVimMode(editor, vimStatusBar);
+            
+            // Define custom :w command for saving
+            VimMode.Vim.defineEx('write', 'w', () => {
+                console.log('Saving file...');
+                fileStore.saveFile(fileStore.getActiveFilepath() || '');
+            });
         }
 
         // Set initial content if there's an active file
