@@ -1,25 +1,19 @@
 <script lang="ts">
     import {
-        GitBranch,
-        User,
-        Files,
-        Check,
         MoreVertical,
         Undo,
         GitCommit,
-        Plus as PlusCircle,
-        ChevronDown,
+        Plus,
         Clock,
         Trash2,
-        Plus,
-        RefreshCw,
-        ChevronsUp,
-        ChevronRight
+        ChevronRight,
+        RefreshCw
+
     } from 'lucide-svelte';
     import DropdownMenu from '../components/DropdownMenu.svelte';
     import Button from '../components/Button.svelte';
     import Input from '../components/Input.svelte';
-    import FileTree from '../components/FileTree.svelte';
+    import ExplorerPane from './panes/ExplorerPane.svelte';
     import type { GitStatusItem } from '@/types';
     import type { SidebarState } from '@/types/ui';
     import { fileStore } from '@/stores/fileStore';
@@ -27,10 +21,11 @@
     export let state: SidebarState;
 
     // Subscribe to fileStore
-    $: fileTree = $fileStore.fileTree || state.fileTree;
+    $: fileTree = $fileStore.fileTree || undefined;
 
     let showMoreCommitOptions = false;
-    let isAllCollapsed = false;
+    let showSourceControlActions = false;
+    let showCommits = false;
 
     const gitStatus: GitStatusItem[] = [
         { status: 'modified', file: 'src/App.tsx', staged: true },
@@ -38,27 +33,6 @@
     ];
 
     let commitMessage = '';
-    let showSourceControlActions = false;
-    let showCommits = false;
-
-    // Mock data for commits - replace with actual git log data
-    const recentCommits = [
-        {
-            hash: 'abc1234',
-            message: 'feat: Add source control panel',
-            author: 'John Doe',
-            date: '2 hours ago',
-            files: ['src/lib/editor/LeftSidebar.svelte', 'src/lib/editor/Editor.svelte']
-        },
-        {
-            hash: 'def5678',
-            message: 'fix: Resolve sidebar collapse issues',
-            author: 'Jane Smith',
-            date: '3 hours ago',
-            files: ['src/lib/editor/LeftSidebar.svelte']
-        }
-    ];
-
     $: stagedChanges = gitStatus.filter(item => item.staged);
     $: unstagedChanges = gitStatus.filter(item => !item.staged);
 
@@ -79,40 +53,30 @@
         // Implement discard all functionality
     }
 
-    // function handleToggleStaged(file: string) {
-    //     // Implement toggle staged functionality
-    // }
+    // Mock data for commits - replace with actual git log data
+    const recentCommits = [
+        {
+            hash: 'abc1234',
+            message: 'feat: Add source control panel',
+            author: 'John Doe',
+            date: '2 hours ago',
+            files: ['src/lib/editor/LeftSidebar.svelte', 'src/lib/editor/Editor.svelte']
+        },
+        {
+            hash: 'def5678',
+            message: 'fix: Resolve sidebar collapse issues',
+            author: 'Jane Smith',
+            date: '3 hours ago',
+            files: ['src/lib/editor/LeftSidebar.svelte']
+        }
+    ];
+
 </script>
 
 <div class="h-full w-full flex flex-col overflow-hidden border-r border-gray-800">
     <div class="flex flex-col h-full">
         {#if state.activeSection === 'files'}
-            <div class="flex items-center justify-between h-[35px] px-4 border-b border-gray-800">
-                <div class="flex items-center space-x-2">
-                    <span class="text-sm font-medium">Explorer</span>
-                </div>
-                <div class="flex items-center space-x-1">
-                    <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        title="Refresh"
-                        on:click={() => fileStore.refreshFiles()}
-                    >
-                        <RefreshCw size={14} />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        title="Collapse All"
-                        on:click={() => state.isAllCollapsed = !state.isAllCollapsed}
-                    >
-                        <ChevronsUp size={14} />
-                    </Button>
-                </div>
-            </div>
-            <div class="flex-1 overflow-auto">
-                <FileTree fileTree={fileTree} isAllCollapsed={state.isAllCollapsed} />
-            </div>
+            <ExplorerPane {fileTree} />
         {/if}
 
         {#if state.activeSection === 'git'}

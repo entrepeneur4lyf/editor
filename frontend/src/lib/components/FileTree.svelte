@@ -1,8 +1,7 @@
 <script lang="ts">
-    import { RefreshCw, ChevronsUp, Plus } from 'lucide-svelte';
+    import { Edit, FolderPlus, Plus, Trash2 } from 'lucide-svelte';
     import FileTreeItem from '../editor/FileTreeItem.svelte';
     import ContextMenu from '../editor/ContextMenu.svelte';
-    import Button from './Button.svelte';
     import type { service } from '@/lib/wailsjs/go/models';
     import { fileStore } from '@/stores/fileStore';
 
@@ -10,6 +9,7 @@
 
     export let fileTree: FileNode[] = [];
     export let isAllCollapsed = false;
+    export let key = 0;  // Add key prop to force re-render
 
     let contextMenu = {
         show: false,
@@ -26,11 +26,6 @@
             y: e.clientY,
             targetItem: item
         };
-    }
-
-    function handleRename(path: string, newName: string) {
-        // TODO: Implement rename functionality
-        console.log('Rename', path, 'to', newName);
     }
 
     function handleCloseContextMenu() {
@@ -56,93 +51,43 @@
         }
         handleCloseContextMenu();
     }
+
+    function handleRename(path: string, newName: string) {
+        // TODO: Implement rename logic
+    }
 </script>
 
-<div class="flex flex-col h-full">
-    <!-- Toolbar -->
-    <div class="flex items-center justify-between px-2 py-1 border-b border-gray-800">
-        <div class="flex items-center space-x-1">
-            <Button
-                variant="ghost"
-                size="icon-sm"
-                title="Refresh"
-                on:click={() => fileStore.refreshFiles()}
-            >
-                <RefreshCw size={14} />
-            </Button>
-            <Button
-                variant="ghost"
-                size="icon-sm"
-                title="Collapse All"
-                on:click={() => {
-                    isAllCollapsed = true;
-                    fileTree = fileTree.map(item => ({
-                        ...item,
-                        expanded: false,
-                        children: item.children?.map(child => ({ ...child, expanded: false }))
-                    }));
-                }}
-            >
-                <ChevronsUp size={14} />
-            </Button>
-            <Button
-                variant="ghost"
-                size="icon-sm"
-                title="Expand All"
-                on:click={() => {
-                    isAllCollapsed = false;
-                    fileTree = fileTree.map(item => ({
-                        ...item,
-                        expanded: true,
-                        children: item.children?.map(child => ({ ...child, expanded: true }))
-                    }));
-                }}
-            >
-                <ChevronsUp size={14} class="rotate-180" />
-            </Button>
-        </div>
-        <Button
-            variant="ghost"
-            size="icon-sm"
-            title="New File"
-            on:click={() => handleContextMenuAction('newFile')}
-        >
-            <Plus size={14} />
-        </Button>
-    </div>
+<div class="h-full overflow-auto">
+    {#if $fileStore.loading}
+        <div class="p-4 text-sm text-gray-500">Loading files...</div>
+    {:else if $fileStore.error}
+        <div class="p-4 text-sm text-red-500">{$fileStore.error}</div>
+    {:else if fileTree && fileTree.length > 0}
+        {#each fileTree as item (item.path)}
+            <FileTreeItem
+                {item}
+                {isAllCollapsed}
+                onContextMenu={(e) => handleContextMenu(e, item)}
+                onRename={(path, newName) => handleRename(path, newName)}
+            />
+        {/each}
+    {:else}
+        <div class="p-4 text-sm text-gray-500">No files found</div>
+    {/if}
 
-    <!-- File Tree -->
-    <div class="flex-1 overflow-auto">
-        {#if $fileStore.loading}
-            <div class="p-4 text-sm text-gray-500">Loading files...</div>
-        {:else if $fileStore.error}
-            <div class="p-4 text-sm text-red-500">{$fileStore.error}</div>
-        {:else if fileTree && fileTree.length > 0}
-            {#each fileTree as item (item.path)}
-                <FileTreeItem
-                    {item}
-                    onContextMenu={handleContextMenu}
-                    onRename={handleRename}
-                    {isAllCollapsed}
-                />
-            {/each}
-        {:else}
-            <div class="p-4 text-sm text-gray-500">No files found</div>
-        {/if}
-    </div>
-
-    <!-- Context Menu -->
     {#if contextMenu.show}
         <ContextMenu
             x={contextMenu.x}
             y={contextMenu.y}
-            onClose={handleCloseContextMenu}
+            on:close={handleCloseContextMenu}
             items={[
-                { label: 'New File', action: () => handleContextMenuAction('newFile') },
-                { label: 'New Folder', action: () => handleContextMenuAction('newFolder') },
-                { label: 'Rename', action: () => handleContextMenuAction('rename') },
-                { label: 'Delete', action: () => handleContextMenuAction('delete') }
+                { label: 'New File', icon: Plus, action: () => handleContextMenuAction('newFile') },
+                { label: 'New Folder', icon: FolderPlus, action: () => handleContextMenuAction('newFolder') },
+                { label: 'Rename', icon: Edit, action: () => handleContextMenuAction('rename') },
+                { label: 'Delete', icon: Trash2, action: () => handleContextMenuAction('delete') }
             ]}
+            on:action={({ detail }) => handleContextMenuAction(detail)}
+            onClose={handleCloseContextMenu}
         />
     {/if}
 </div>
