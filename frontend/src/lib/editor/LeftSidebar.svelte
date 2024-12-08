@@ -24,8 +24,8 @@
     import DropdownMenu from '../components/DropdownMenu.svelte';
     import Button from '../components/Button.svelte';
     import Input from '../components/Input.svelte';
-    import type { FileNode, GitStatusItem, SidebarState } from '../../types';
-    import { setKeyboardContext } from '../stores/keyboardStore';
+    import type { FileNode, GitStatusItem, SidebarState } from '@/types';
+    import { setKeyboardContext } from '@/stores/keyboardStore';
 
     export let state: {
         collapsed: boolean;

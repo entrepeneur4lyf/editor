@@ -1,35 +1,14 @@
 <script lang="ts">
     import {
-        Clock,
-        FolderOpen,
         Book,
         ExternalLink,
-        ChevronRight,
         Github,
         Rocket,
         Sparkles,
         Keyboard,
     } from "lucide-svelte";
-    import { BrowserOpenURL } from "@wails/runtime";
-
-    // Mock data for recent projects - this should come from your store/backend
-    const recentProjects = [
-        {
-            name: "edit-ai",
-            path: "/home/user/projects/edit-ai",
-            lastOpened: "2 hours ago",
-        },
-        {
-            name: "personal-website",
-            path: "/home/user/projects/website",
-            lastOpened: "1 day ago",
-        },
-        {
-            name: "game-project",
-            path: "/home/user/projects/game",
-            lastOpened: "3 days ago",
-        },
-    ];
+    import { BrowserOpenURL } from "@/lib/wailsjs/runtime/runtime";
+    import RecentProjects from "@/lib/components/RecentProjects.svelte";
 
     const documentationLinks = [
         {
@@ -55,6 +34,7 @@
     function openExternalUrl(url: string) {
         BrowserOpenURL(url);
     }
+
 </script>
 
 <div class="min-h-screen bg-gray-900 text-gray-200 p-8">
@@ -64,7 +44,7 @@
             <h1
                 class="text-5xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent"
             >
-                Welcome to EditAI
+                Welcome to Edit4I
             </h1>
             <p class="text-gray-400 mt-4 text-lg">
                 Your intelligent coding companion
@@ -73,62 +53,8 @@
 
         <!-- Main Content -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Left Column - Recent Projects -->
-            <div
-                class="bg-gray-800/50 rounded-xl p-6 backdrop-blur-sm border border-gray-700"
-            >
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold flex items-center gap-2">
-                        <Clock size={20} /> Recent Projects
-                    </h2>
-                    <button
-                        class="text-blue-400 hover:text-blue-300 flex items-center gap-1 text-sm"
-                    >
-                        View All <ChevronRight size={16} />
-                    </button>
-                </div>
-
-                <div class="space-y-4">
-                    {#each recentProjects as project}
-                        <button class="w-full group">
-                            <div
-                                class="bg-gray-800 hover:bg-gray-700 p-4 rounded-lg transition-all border border-gray-700 hover:border-gray-600"
-                            >
-                                <div class="flex items-start justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <FolderOpen
-                                            size={18}
-                                            class="text-blue-400"
-                                        />
-                                        <div class="text-left">
-                                            <h3
-                                                class="font-medium group-hover:text-blue-400 transition-colors"
-                                            >
-                                                {project.name}
-                                            </h3>
-                                            <p
-                                                class="text-sm text-gray-400 mt-1"
-                                            >
-                                                {project.path}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <span class="text-xs text-gray-500"
-                                        >{project.lastOpened}</span
-                                    >
-                                </div>
-                            </div>
-                        </button>
-                    {/each}
-
-                    <button
-                        class="w-full bg-gray-800 hover:bg-gray-700 p-4 rounded-lg transition-all border border-gray-700 hover:border-blue-500 border-dashed flex items-center justify-center gap-2 text-gray-400 hover:text-blue-400"
-                    >
-                        <FolderOpen size={18} />
-                        Open Project
-                    </button>
-                </div>
-            </div>
+            <!-- Left Column - Recent projects -->
+            <RecentProjects/>
 
             <!-- Right Column - Documentation -->
             <div class="space-y-8">

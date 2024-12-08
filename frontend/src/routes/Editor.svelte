@@ -1,17 +1,17 @@
 <script lang="ts">
     import { X } from "lucide-svelte";
     import { onMount, onDestroy } from 'svelte';
-    import type { Tab } from "@/types/editor.types";
-    import type { SidebarState } from "@/types/ui.types";
-    import type { FileNode } from "@/types/file.types";
+    import type { Tab } from "@/types/editor";
+    import type { SidebarState } from "@/types/ui";
+    import type { FileNode } from "@/types/file";
     import LeftSidebar from "@/lib/editor/LeftSidebar.svelte";
     import RightSidebar from "@/lib/editor/RightSidebar.svelte";
     import ResizeHandle from "@/lib/editor/ResizeHandle.svelte";
     import Topbar from "@/lib/editor/Topbar.svelte";
     import BottomBar from "@/lib/editor/BottomBar.svelte";
-    import { fileStore, type FileItem } from '../lib/stores/fileStore';
+    import { fileStore, type FileItem } from '@/stores/fileStore';
 
-    import { setKeyboardContext } from '../lib/stores/keyboardStore';
+    import { setKeyboardContext } from '@/stores/keyboardStore';
     import * as monaco from 'monaco-editor';
 
     // Tab state

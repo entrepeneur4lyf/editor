@@ -2,9 +2,9 @@
     import { onMount, createEventDispatcher, afterUpdate, onDestroy } from 'svelte';
     import { Search } from 'lucide-svelte';
     import Input from './Input.svelte';
-    import { fuzzySearch } from '../utils/fuzzySearch';
-    import { commandStore, type Command } from '../stores/commandStore';
-    import { keyBindings, formatKeybinding, setKeyboardContext, type KeyBinding } from '../stores/keyboardStore';
+    import { fuzzySearch } from '@/lib/utils/fuzzySearch';
+    import { commandStore, type Command } from '@/stores/commandStore';
+    import { keyBindings, formatKeybinding, setKeyboardContext, type KeyBinding } from '@/stores/keyboardStore';
 
     const dispatch = createEventDispatcher();
 
