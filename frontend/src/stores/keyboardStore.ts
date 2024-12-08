@@ -250,7 +250,7 @@ export const keyBindings = derived(
         const bindings: Record<string, KeyBinding> = {};
         // Use Array.from to ensure proper Set iteration
         const activeContextArray = Array.from($activeContexts || new Set(['global']));
-        
+
         for (const [command, config] of Object.entries(defaultKeybindings)) {
             // Check if any of the binding's contexts are currently active
             if (config.defaultBinding.context.some(ctx => activeContextArray.includes(ctx))) {
@@ -261,7 +261,7 @@ export const keyBindings = derived(
                 };
             }
         }
-        
+
         return bindings;
     }
 );
@@ -303,18 +303,25 @@ export function formatKeybinding(binding: KeyBinding): string {
 // Function to check if a keyboard event matches a keybinding
 export function matchesKeybinding(event: KeyboardEvent, binding: KeyBinding): boolean {
     const modifiers = binding.modifiers || [];
-    
-    const modifierMatch = 
+
+    const modifierMatch =
         modifiers.includes('ctrl') === event.ctrlKey &&
         modifiers.includes('alt') === event.altKey &&
         modifiers.includes('shift') === event.shiftKey &&
         modifiers.includes('meta') === event.metaKey;
-        
+
     return modifierMatch && event.key.toLowerCase() === binding.key.toLowerCase();
 }
 
 // Function to handle global keyboard events
 export function handleKeyboardEvent(event: KeyboardEvent) {
+  // Ignore enter when editor is focused
+  if (event.target instanceof HTMLElement &&
+      event.target.closest('.monaco-editor') &&
+      event.key === 'Enter') {
+      return;
+  }
+
     const currentBindings = get(keyBindings);
     console.log('Handling keyboard event:', {
         key: event.key,
@@ -323,7 +330,7 @@ export function handleKeyboardEvent(event: KeyboardEvent) {
         alt: event.altKey
     });
     console.log('Available bindings:', Object.keys(currentBindings));
-    
+
     for (const [command, binding] of Object.entries(currentBindings)) {
         console.log('Checking binding:', command, binding);
         if (matchesKeybinding(event, binding)) {
