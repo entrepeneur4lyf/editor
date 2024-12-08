@@ -157,6 +157,18 @@ function createFileStore() {
             update(state => ({ ...state, activeFilePath: path }));
         },
 
+        // Mark file as dirty
+        markAsDirty(path: string) {
+            update(state => {
+                const file = state.openFiles.get(path);
+                if (!file || file.isDirty) return state; // Skip if already dirty
+
+                const newOpenFiles = new Map(state.openFiles);
+                newOpenFiles.set(path, { ...file, isDirty: true });
+                return { ...state, openFiles: newOpenFiles };
+            });
+        },
+
         // Update file content
         updateFileContent(path: string, content: string, isDirty = true) {
             update(state => {
@@ -165,6 +177,23 @@ function createFileStore() {
 
                 const newOpenFiles = new Map(state.openFiles);
                 newOpenFiles.set(path, { ...file, content, isDirty });
+                return { ...state, openFiles: newOpenFiles };
+            });
+        },
+
+        // Save file content
+        saveFile(path: string, content: string) {
+            update(state => {
+                const file = state.openFiles.get(path);
+                if (!file) return state;
+
+                const newOpenFiles = new Map(state.openFiles);
+                // Update both content and clear dirty state
+                newOpenFiles.set(path, { 
+                    ...file, 
+                    content,
+                    isDirty: false 
+                });
                 return { ...state, openFiles: newOpenFiles };
             });
         },
