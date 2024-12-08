@@ -52,8 +52,25 @@ function createFileStore() {
     return {
         subscribe,
         
+        // Clear all state and localStorage
+        clearState() {
+            localStorage.removeItem('fileState');
+            set({
+                fileTree: null,
+                activeFilePath: null,
+                currentProjectPath: null,
+                openFiles: new Map(),
+                loading: false,
+                error: null,
+            });
+        },
+
         // Set current project
         setCurrentProject(projectPath: string) {
+            // Clear existing state when opening a new project
+            if (projectPath !== get({ subscribe }).currentProjectPath) {
+                this.clearState();
+            }
             update(state => ({ ...state, currentProjectPath: projectPath }));
             return this.loadProjectFiles();
         },
@@ -63,18 +80,21 @@ function createFileStore() {
             const state = get({ subscribe });
             if (!path && !state.currentProjectPath) return;
 
-            path = path || state.currentProjectPath;
+            path = path || (state.currentProjectPath ?? undefined);
+            update(state => ({ ...state, loading: true, error: null }));
 
             try {
                 const rootNode = await GetProjectFiles(path!);
                 update(state => ({ 
                     ...state, 
-                    fileTree: rootNode.children || []
+                    fileTree: rootNode.children || [],
+                    loading: false
                 }));
             } catch (err) {
                 update(state => ({
                     ...state,
-                    error: err instanceof Error ? err.message : 'Failed to load project files'
+                    error: err instanceof Error ? err.message : 'Failed to load project files',
+                    loading: false
                 }));
             }
         },
