@@ -1,6 +1,6 @@
 import { writable, get } from 'svelte/store';
 import type { service } from '@/lib/wailsjs/go/models';
-import { GetProjectFiles, GetFileContent } from '@/lib/wailsjs/go/main/App';
+import { GetProjectFiles, GetFileContent, SaveFile } from '@/lib/wailsjs/go/main/App';
 
 type FileNode = service.FileNode;
 
@@ -157,6 +157,11 @@ function createFileStore() {
             update(state => ({ ...state, activeFilePath: path }));
         },
 
+        // Get currently open file
+        getActiveFilepath() {
+            return get({ subscribe }).activeFilePath;
+        },
+
         // Mark file as dirty
         markAsDirty(path: string) {
             update(state => {
@@ -182,20 +187,34 @@ function createFileStore() {
         },
 
         // Save file content
-        saveFile(path: string, content: string) {
-            update(state => {
-                const file = state.openFiles.get(path);
-                if (!file) return state;
-
-                const newOpenFiles = new Map(state.openFiles);
-                // Update both content and clear dirty state
-                newOpenFiles.set(path, { 
-                    ...file, 
-                    content,
-                    isDirty: false 
+        async saveFile(path: string) {
+            const state = get({ subscribe });
+            const file = state.openFiles.get(path);
+            if (!file) return;
+            
+            try {
+                const content = file.content;
+                await SaveFile(path, content);
+                
+                // Update the store to mark file as not dirty
+                update(state => {
+                    const file = state.openFiles.get(path);
+                    if (file) {
+                        const newOpenFiles = new Map(state.openFiles);
+                        newOpenFiles.set(path, { 
+                            ...file, 
+                            isDirty: false 
+                        });
+                        return { ...state, openFiles: newOpenFiles };
+                    }
+                    return state;
                 });
-                return { ...state, openFiles: newOpenFiles };
-            });
+            } catch (err) {
+                update(state => ({
+                    ...state,
+                    error: err instanceof Error ? err.message : 'Failed to save file'
+                }));
+            }
         },
 
         // Reset store

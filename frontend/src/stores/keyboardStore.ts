@@ -1,5 +1,6 @@
 import { writable, derived, get } from 'svelte/store';
 import type { KeyBinding, KeyBindingConfig, KeyboardContext } from '../types/keyboard';
+import { fileStore } from './fileStore';
 
 // Default keybindings configuration
 const defaultKeybindings: KeyBindingConfig = {
@@ -210,6 +211,22 @@ const defaultKeybindings: KeyBindingConfig = {
             context: ['fileManager']
         },
         action: () => {}
+    },
+    'file.save': {
+        defaultBinding: {
+            key: 's',
+            modifiers: ['ctrl'],
+            description: 'Save File',
+            category: 'File',
+            context: ['global']
+        },
+        action: async () => {
+            try {
+                await fileStore.saveFile(fileStore.getActiveFilepath() || '');
+            } catch (error) {
+                console.error('Error saving file:', error);
+            }
+        }
     }
 };
 

@@ -1,121 +1,123 @@
 <script lang="ts">
-    import { onMount, onDestroy } from 'svelte';
     import * as monaco from 'monaco-editor';
+    import { onMount, onDestroy } from 'svelte';
     import { fileStore } from '@/stores/fileStore';
 
     let editorContainer: HTMLElement;
     let editor: monaco.editor.IStandaloneCodeEditor;
     let currentModel: monaco.editor.ITextModel | null = null;
-    let currentPath: string | null = null;
 
     function getLanguageFromPath(path: string): string {
         const ext = path.split('.').pop()?.toLowerCase() || '';
         switch (ext) {
             case 'js':
                 return 'javascript';
+            case 'jsx':
+                return 'javascript';
             case 'ts':
                 return 'typescript';
-            case 'jsx':
             case 'tsx':
                 return 'typescript';
-            case 'json':
-                return 'json';
-            case 'css':
-                return 'css';
-            case 'scss':
-                return 'scss';
             case 'html':
                 return 'html';
             case 'svelte':
-                return 'html';
+                return 'html'; // Use HTML highlighting for Svelte
             case 'go':
                 return 'go';
             case 'py':
                 return 'python';
+            case 'json':
+                return 'json';
             case 'md':
                 return 'markdown';
-            case 'yml':
-            case 'yaml':
-                return 'yaml';
-            case 'sh':
-                return 'shell';
+            case 'css':
+                return 'css';
             default:
                 return 'plaintext';
         }
     }
 
-    let isInitialized = false;
+    // Subscribe to active file changes
+    $: if ($fileStore.activeFilePath && $fileStore.openFiles.has($fileStore.activeFilePath)) {
+        const file = $fileStore.openFiles.get($fileStore.activeFilePath)!;
+        updateEditor(file);
+    }
 
-    function initializeEditor() {
-        if (isInitialized || !editorContainer) return;
-        
+    async function updateEditor(file: { path: string; content: string; language: string }) {
+        if (!editor) return;
+
+        // Create or get model for this file
+        let model = monaco.editor.getModel(monaco.Uri.file(file.path));
+        if (!model) {
+            model = monaco.editor.createModel(
+                file.content,
+                getLanguageFromPath(file.path),
+                monaco.Uri.file(file.path)
+            );
+        } else {
+            const currentValue = model.getValue();
+            // Only update if content actually changed
+            if (currentValue !== file.content) {
+                model.setValue(file.content);
+            }
+        }
+
+        // Set as current model
+        editor.setModel(model);
+        currentModel = model;
+
+        // Listen for content changes
+        const disposable = model.onDidChangeContent(() => {
+            const currentContent = model.getValue();
+            if (currentContent !== file.content) {
+                fileStore.updateFileContent(file.path, currentContent, true);
+            }
+        });
+
+        // Add command for saving
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
+            if (file.path) {
+                try {
+                    await fileStore.saveFile(file.path);
+                } catch (error) {
+                    console.error('Error saving file:', error);
+                }
+            }
+        });
+
+        return () => disposable.dispose();
+    }
+
+    onMount(() => {
+        // Create editor
         editor = monaco.editor.create(editorContainer, {
             theme: 'vs-dark',
             automaticLayout: true,
-            minimap: { enabled: false },
+            minimap: {
+                enabled: false
+            },
             scrollBeyondLastLine: false,
             fontSize: 14,
-            tabSize: 2,
+            tabSize: 4,
+            insertSpaces: true,
             wordWrap: 'on',
             lineNumbers: 'on',
-            renderWhitespace: 'selection',
+            glyphMargin: true,
+            folding: true,
+            lineDecorationsWidth: 10,
+            renderLineHighlight: 'all',
             scrollbar: {
-                vertical: 'visible',
-                horizontal: 'visible',
-                useShadows: false,
                 verticalScrollbarSize: 10,
                 horizontalScrollbarSize: 10
             }
         });
 
-        editor.onDidChangeModelContent(() => {
-            if (currentPath) {
-                const isDirty = editor.getValue() !== $fileStore.openFiles.get(currentPath)?.content;
-                if (isDirty) {
-                    fileStore.markAsDirty(currentPath);
-                }
-            }
-        });
-
-        isInitialized = true;
-    }
-
-    function updateEditorContent(file: { path: string; content: string; language: string }) {
-        if (!editor || !file) return;
-
-        const uri = monaco.Uri.file(file.path);
-        
-        // Only create/update model if it's a different file
-        if (currentPath !== file.path) {
-            let model = monaco.editor.getModel(uri);
-            
-            if (!model) {
-                model = monaco.editor.createModel(
-                    file.content,
-                    getLanguageFromPath(file.path),
-                    uri
-                );
-            }
-            
-            if (currentModel && currentModel !== model) {
-                currentModel.dispose();
-            }
-            
-            currentModel = model;
-            editor.setModel(model);
-            currentPath = file.path;
+        // Set initial content if there's an active file
+        if ($fileStore.activeFilePath) {
+            const file = $fileStore.openFiles.get($fileStore.activeFilePath);
+            if (file) updateEditor(file);
         }
-    }
-
-    $: if ($fileStore.activeFilePath && $fileStore.openFiles.has($fileStore.activeFilePath)) {
-        const file = $fileStore.openFiles.get($fileStore.activeFilePath)!;
-        if (!isInitialized) {
-            initializeEditor();
-        }
-        if (file.path !== currentPath) {
-            updateEditorContent(file);
-        }
-    }
+    });
 
     onDestroy(() => {
         if (currentModel) {
@@ -127,4 +129,7 @@
     });
 </script>
 
-<div class="w-full h-full" bind:this={editorContainer} />
+<div
+    bind:this={editorContainer}
+    class="w-full h-full"
+/>
