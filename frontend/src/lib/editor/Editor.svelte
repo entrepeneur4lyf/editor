@@ -103,8 +103,13 @@
             }
         }
 
-        // Set as current model
+        // Set the model as current
         editor.setModel(model);
+        
+        // Focus the editor after setting the model
+        editor.focus();
+
+        // Set as current model
         currentModel = model;
 
         // Listen for content changes
