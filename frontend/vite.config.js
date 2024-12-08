@@ -9,5 +9,20 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, './src'),
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {}
+      }
+    }
+  },
+  optimizeDeps: {
+    exclude: ['@wailsjs/runtime']
+  },
+  server: {
+    fs: {
+      strict: false
+    }
   }
 })

@@ -52,7 +52,7 @@
     $: isActive = $fileStore.activeFilePath === item.path;
 </script>
 
-<div class="relative" style="padding-left: {depth * 1.5}rem">
+<div class="relative">
     <div
         class="flex items-center py-1 px-2 hover:bg-gray-800 cursor-pointer group rounded-sm mx-1 hover:rounded-md"
         class:active={isActive}

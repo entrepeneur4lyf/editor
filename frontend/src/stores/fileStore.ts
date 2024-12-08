@@ -1,10 +1,36 @@
-import { writable } from 'svelte/store';
-import type { FileNode, FileState, OpenFile, Tab } from '@/types/files';
+import { writable, get } from 'svelte/store';
+import type { service } from '@/lib/wailsjs/go/models';
 import { GetProjectFiles, GetFileContent } from '@/lib/wailsjs/go/main/App';
 
-const initialState: FileState = {
+type FileNode = service.FileNode;
+
+interface OpenFile {
+    path: string;
+    content: string;
+    isDirty: boolean;
+    language: string;
+    cursor: { line: number; column: number };
+}
+
+interface FileState {
+    fileTree: FileNode[] | null;
+    activeFilePath: string | null;
+    currentProjectPath: string | null;
+    openFiles: Map<string, OpenFile>;
+    loading: boolean;
+    error: string | null;
+}
+
+// Load initial state from localStorage
+const savedState = localStorage.getItem('fileState');
+const initialState: FileState = savedState ? {
+    ...JSON.parse(savedState),
+    // Convert the openFiles object back to a Map
+    openFiles: new Map(Object.entries(JSON.parse(savedState).openFiles || {}))
+} : {
     fileTree: null,
     activeFilePath: null,
+    currentProjectPath: null,
     openFiles: new Map(),
     loading: false,
     error: null,
@@ -13,22 +39,41 @@ const initialState: FileState = {
 function createFileStore() {
     const { subscribe, set, update } = writable<FileState>(initialState);
 
+    // Save state changes to localStorage
+    subscribe(state => {
+        // Convert Map to object for JSON serialization
+        const serializedState = {
+            ...state,
+            openFiles: Object.fromEntries(state.openFiles)
+        };
+        localStorage.setItem('fileState', JSON.stringify(serializedState));
+    });
+
     return {
         subscribe,
         
+        // Set current project
+        setCurrentProject(projectPath: string) {
+            update(state => ({ ...state, currentProjectPath: projectPath }));
+            return this.loadProjectFiles();
+        },
+
         // Load project files
-        async loadProjectFiles(projectPath: string) {
-            update(state => ({ ...state, loading: true, error: null }));
-            
+        async loadProjectFiles(path?: string) {
+            const state = get({ subscribe });
+            if (!path && !state.currentProjectPath) return;
+
+            path = path || state.currentProjectPath;
+
             try {
-                const fileTree = await GetProjectFiles(projectPath);
-                // Convert the Go FileNode to our FileNode type
-                const convertedTree = convertGoFileNode(fileTree);
-                update(state => ({ ...state, fileTree: convertedTree, loading: false }));
+                const rootNode = await GetProjectFiles(path!);
+                update(state => ({ 
+                    ...state, 
+                    fileTree: rootNode.children || []
+                }));
             } catch (err) {
                 update(state => ({
                     ...state,
-                    loading: false,
                     error: err instanceof Error ? err.message : 'Failed to load project files'
                 }));
             }
@@ -36,12 +81,11 @@ function createFileStore() {
 
         // Open a file
         async openFile(path: string) {
-            update(state => {
-                if (state.openFiles.has(path)) {
-                    return { ...state, activeFilePath: path };
-                }
-                return { ...state, loading: true, error: null };
-            });
+            const state = get({ subscribe });
+            if (state.openFiles.has(path)) {
+                update(state => ({ ...state, activeFilePath: path }));
+                return;
+            }
 
             try {
                 const content = await GetFileContent(path);
@@ -58,14 +102,12 @@ function createFileStore() {
                     return {
                         ...state,
                         openFiles: newOpenFiles,
-                        activeFilePath: path,
-                        loading: false
+                        activeFilePath: path
                     };
                 });
             } catch (err) {
                 update(state => ({
                     ...state,
-                    loading: false,
                     error: err instanceof Error ? err.message : 'Failed to open file'
                 }));
             }
@@ -85,77 +127,33 @@ function createFileStore() {
             });
         },
 
-        // Set files (for example, from the initial file tree)
-        setFiles(files: FileNode[]) {
-            const rootNode: FileNode = {
-                id: 'root',
-                name: '',
-                path: '',
-                type: 'folder',
-                children: files
-            };
-            update(state => ({ ...state, fileTree: rootNode }));
+        // Refresh files
+        async refreshFiles() {
+            return this.loadProjectFiles();
         },
 
-        // Add a file
-        addFile(file: FileNode) {
-            update(state => {
-                if (!state.fileTree?.children) return state;
-                return {
-                    ...state,
-                    fileTree: {
-                        ...state.fileTree,
-                        children: [...state.fileTree.children, file]
-                    }
-                };
-            });
+        // Set active file
+        setActiveFile(path: string | null) {
+            update(state => ({ ...state, activeFilePath: path }));
         },
 
         // Update file content
-        updateFileContent(path: string, content: string) {
+        updateFileContent(path: string, content: string, isDirty = true) {
             update(state => {
-                const openFile = state.openFiles.get(path);
-                if (!openFile) return state;
+                const file = state.openFiles.get(path);
+                if (!file) return state;
 
                 const newOpenFiles = new Map(state.openFiles);
-                newOpenFiles.set(path, { ...openFile, content, isDirty: true });
-                return { ...state, openFiles: newOpenFiles };
-            });
-        },
-
-        // Update cursor position
-        updateCursor(path: string, line: number, column: number) {
-            update(state => {
-                const openFile = state.openFiles.get(path);
-                if (!openFile) return state;
-
-                const newOpenFiles = new Map(state.openFiles);
-                newOpenFiles.set(path, { ...openFile, cursor: { line, column } });
+                newOpenFiles.set(path, { ...file, content, isDirty });
                 return { ...state, openFiles: newOpenFiles };
             });
         },
 
         // Reset store
         reset() {
+            localStorage.removeItem('fileState');
             set(initialState);
-        },
-    };
-}
-
-// Helper function to convert Go FileNode to our FileNode type
-function convertGoFileNode(node: any): FileNode {
-    return {
-        id: node.path, // Use path as id since it's unique
-        name: node.name,
-        path: node.path,
-        type: node.type === 'directory' ? 'folder' : 'file',
-        expanded: false,
-        metadata: {
-            size: node.size,
-            modified: new Date(node.lastModified),
-            type: node.type
-        },
-        children: node.children?.map(convertGoFileNode)
+        }
     };
 }
 

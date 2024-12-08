@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { push } from "svelte-spa-router";
     import {
         OpenProjectFolder,
         GetRecentProjects,
@@ -7,6 +8,7 @@
     } from "@/lib/wailsjs/go/main/App";
     import type { db, sql } from "@/lib/wailsjs/go/models";
     import { Clock, FolderOpen, ChevronRight } from "lucide-svelte";
+    import { projectStore } from "@/stores/project";
 
     let recentProjects: db.Project[] = [];
     let loading = true;
@@ -32,6 +34,10 @@
             recentProjects = recentProjects.map((p) =>
                 p.ID === updatedProject.ID ? updatedProject : p,
             );
+            
+            // Set current project and navigate to editor
+            await projectStore.setCurrentProject(updatedProject);
+            push("/editor");
         }
     }
 
@@ -43,7 +49,11 @@
         // Extract project name from path (last folder name)
         const name = path.split("/").pop() || path;
 
-        await AddProject(name, path);
+        const project = await AddProject(name, path);
+        if (project) {
+            await projectStore.setCurrentProject(project);
+            push("/editor");
+        }
     }
 
     function formatDate(date: sql.NullTime): string {
@@ -90,7 +100,7 @@
     <div class="space-y-4">
         {#each recentProjects as project}
             <button
-                class="w-full group"
+                class="w-full group overflow-hidden"
                 on:click={() => openProject(project.ID)}
             >
                 <div

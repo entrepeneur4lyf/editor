@@ -3,6 +3,7 @@ package service
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 )
@@ -46,6 +47,9 @@ func (s *FileService) GetProjectFiles(projectPath string) (*FileNode, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Order with folders first and by alphabetical order
+	s.sortFileTree(root)
 
 	// Cache the result
 	s.cacheLock.Lock()
@@ -95,6 +99,28 @@ func (s *FileService) buildFileTree(root string) (*FileNode, error) {
 	}
 
 	return node, nil
+}
+
+// sortFileTree sorts the file tree with folders first and by alphabetical order
+func (s *FileService) sortFileTree(node *FileNode) {
+    if node == nil || len(node.Children) == 0 {
+        return
+    }
+
+    // Sort children recursively first
+    for _, child := range node.Children {
+        s.sortFileTree(child)
+    }
+
+    // Sort current level
+    sort.Slice(node.Children, func(i, j int) bool {
+        // If types are different, directories come first
+        if node.Children[i].Type != node.Children[j].Type {
+            return node.Children[i].Type == "directory"
+        }
+        // If types are the same, sort by name
+        return node.Children[i].Name < node.Children[j].Name
+    })
 }
 
 // GetFileContent reads and returns the content of a file

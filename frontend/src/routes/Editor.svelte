@@ -3,47 +3,26 @@
     import { onMount, onDestroy } from 'svelte';
     import type { Tab } from "@/types/editor";
     import type { SidebarState } from "@/types/ui";
-    import type { FileNode } from "@/types/file";
     import LeftSidebar from "@/lib/editor/LeftSidebar.svelte";
     import RightSidebar from "@/lib/editor/RightSidebar.svelte";
     import ResizeHandle from "@/lib/editor/ResizeHandle.svelte";
     import Topbar from "@/lib/editor/Topbar.svelte";
     import BottomBar from "@/lib/editor/BottomBar.svelte";
-    import { fileStore, type FileItem } from '@/stores/fileStore';
-
+    import { fileStore } from '@/stores/fileStore';
+    import { projectStore } from '@/stores/project';
     import { setKeyboardContext } from '@/stores/keyboardStore';
-    import * as monaco from 'monaco-editor';
+    import { get } from 'svelte/store';
+    import Editor from "@/lib/editor/Editor.svelte";
 
     // Tab state
     let tabs = [
-        { id: 1, name: "App.tsx", active: true },
-        { id: 2, name: "LeftSidebar.tsx", active: false },
-        { id: 3, name: "Editor.tsx", active: false },
+        { id: 1, name: "Current File", active: true },
     ] satisfies Tab[];
-
-    // Initial file tree
-    const initialFileTree: FileNode[] = [
-        {
-            id: '1',
-            name: 'src',
-            type: 'folder',
-            path: '/src',
-            expanded: true,
-            children: [
-                { id: '2', name: 'lib', type: 'folder', path: '/src/lib', children: [] },
-                { id: '3', name: 'routes', type: 'folder', path: '/src/routes', children: [] },
-                { id: '4', name: 'App.tsx', type: 'file', path: '/src/App.tsx' },
-                { id: '5', name: 'main.ts', type: 'file', path: '/src/main.ts' },
-            ]
-        },
-        { id: '6', name: 'package.json', type: 'file', path: '/package.json' }
-    ];
 
     // Sidebar states
     let leftSidebarState: SidebarState = {
-        collapsed: true,
+        collapsed: false,
         activeSection: 'files',
-        fileTree: initialFileTree,
         isAllCollapsed: false
     };
 
@@ -55,38 +34,10 @@
 
     // Sidebar widths
     let leftSidebarWidth = 300;
-    let rightSidebarWidth = 300;
+    let rightSidebarWidth = 600;
 
     // Source control state
     let modifiedFilesCount = 2;
-
-    // Monaco editor instance
-    let editor: monaco.editor.IStandaloneCodeEditor;
-    let editorContainer: HTMLElement;
-
-    const editorContent = `
-import React, { useState, useEffect } from 'react';
-
-function Counter() {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    console.log('Component mounted');
-  }, []);
-
-  return (
-    <main>
-      <h1>Welcome to React</h1>
-      <p>Edit <code>src/App.tsx</code> and save to reload.</p>
-      <button onClick={() => setCount(count + 1)}>
-        Clicks: {count}
-      </button>
-    </main>
-  );
-}
-
-export default Counter;
-  `.trim();
 
     function setActiveTab(id: number) {
         tabs = tabs.map((tab) => ({ ...tab, active: tab.id === id }));
@@ -100,59 +51,20 @@ export default Counter;
         tabs = newTabs;
     }
 
-    function initMonaco() {
-        if (editorContainer && !editor) {
-            editor = monaco.editor.create(editorContainer, {
-                value: editorContent,
-                language: 'typescript',
-                theme: 'vs-dark',
-                automaticLayout: true,
-                minimap: {
-                    enabled: true
-                },
-                fontSize: 14,
-                lineNumbers: 'on',
-                roundedSelection: false,
-                scrollBeyondLastLine: false,
-                readOnly: false,
-                cursorStyle: 'line',
-                tabSize: 2
-            });
-        }
-    }
-
     function handleResize() {
         editor?.layout();
     }
 
-    onMount(() => {
-        setKeyboardContext('editor');
-        initMonaco();
+    onMount(async () => {
+        const state = get(projectStore);
+        if (state.currentProject?.Path) {
+            await fileStore.loadProjectFiles(state.currentProject.Path);
+        }
 
-        // For now, let's add some example files
-        const fileItems: FileItem[] = [
-            {
-                path: 'frontend/src/routes/Editor.svelte',
-                name: 'Editor.svelte',
-                type: 'file'
-            },
-            {
-                path: 'frontend/src/lib/components/FileFinder.svelte',
-                name: 'FileFinder.svelte',
-                type: 'file'
-            },
-            {
-                path: 'frontend/src/lib/stores/fileStore.ts',
-                name: 'fileStore.ts',
-                type: 'file'
-            }
-        ];
-        
-        fileStore.setFiles(fileItems);
+        setKeyboardContext('editor');
     });
 
     onDestroy(() => {
-        editor?.dispose();
         setKeyboardContext('global');
     });
 </script>
@@ -209,9 +121,10 @@ export default Counter;
                     {/each}
                 </div>
             </div>
+
+            <Editor/>
             
-            <div class="flex-1 overflow-hidden" bind:this={editorContainer} />
-        </main>
+         </main>
         
         {#if !rightSidebarCollapsed}
             <ResizeHandle 
