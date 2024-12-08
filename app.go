@@ -88,6 +88,15 @@ func (a *App) SaveFile(path, content string) error {
 	return a.files.SaveFile(path, content)
 }
 
+// SearchFiles performs a fuzzy search on files in a directory
+func (a *App) SearchFiles(dirPath, query string) ([]*service.FileNode, error) {
+	// Create a new context that will be cancelled when a new search starts
+	ctx, cancel := context.WithCancel(a.ctx)
+	defer cancel()
+
+	return a.files.SearchFiles(ctx, dirPath, query)
+}
+
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)

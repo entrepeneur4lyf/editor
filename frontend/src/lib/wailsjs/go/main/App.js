@@ -33,3 +33,7 @@ export function OpenProjectFolder() {
 export function SaveFile(arg1, arg2) {
   return window['go']['main']['App']['SaveFile'](arg1, arg2);
 }
+
+export function SearchFiles(arg1, arg2) {
+  return window['go']['main']['App']['SearchFiles'](arg1, arg2);
+}

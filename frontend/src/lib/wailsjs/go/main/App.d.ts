@@ -18,3 +18,5 @@ export function LoadDirectoryContents(arg1:string):Promise<service.FileNode>;
 export function OpenProjectFolder():Promise<string>;
 
 export function SaveFile(arg1:string,arg2:string):Promise<void>;
+
+export function SearchFiles(arg1:string,arg2:string):Promise<Array<service.FileNode>>;

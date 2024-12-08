@@ -10,9 +10,10 @@
     import BottomBar from "@/lib/editor/BottomBar.svelte";
     import { fileStore } from '@/stores/fileStore';
     import { projectStore } from '@/stores/project';
-    import { setKeyboardContext } from '@/stores/keyboardStore';
+    import { registerCommand, setKeyboardContext } from '@/stores/keyboardStore';
     import { get } from 'svelte/store';
     import Editor from "@/lib/editor/Editor.svelte";
+    import FileFinder from "@/lib/components/FileFinder.svelte";
 
     // Tab state
     let tabs = [
@@ -60,8 +61,9 @@
         if (state.currentProject?.Path) {
             await fileStore.loadProjectFiles(state.currentProject.Path);
         }
-
+        
         setKeyboardContext('editor');
+        registerCommand('file.showFileFinder', () => showFileFinder = true);
     });
 
     onDestroy(() => {
@@ -144,4 +146,6 @@
     </div>
     
     <BottomBar />
+
+    <FileFinder bind:show={showFileFinder} on:close={() => showFileFinder = false} />
 </div>
