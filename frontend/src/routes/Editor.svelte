@@ -14,6 +14,7 @@
     import { get } from 'svelte/store';
     import Editor from "@/lib/editor/Editor.svelte";
     import FileFinder from "@/lib/components/FileFinder.svelte";
+    import Modal from "@/lib/components/Modal.svelte";
 
     // Convert open files to tabs
     $: tabs = Array.from($fileStore.openFiles.entries()).map(([path, file]) => ({
@@ -45,8 +46,29 @@
 
     let tabsContainer: HTMLDivElement;
 
+    let showCloseConfirmModal = false;
+    let fileToClose: string | null = null;
+
     function setActiveTab(id: string) {
         fileStore.setActiveFile(id);
+    }
+
+    function handleCloseTab(id: string) {
+        const file = $fileStore.openFiles.get(id);
+        if (file?.isDirty) {
+            fileToClose = id;
+            showCloseConfirmModal = true;
+        } else {
+            closeTab(id);
+        }
+    }
+
+    function confirmCloseTab() {
+        if (fileToClose) {
+            closeTab(fileToClose);
+            fileToClose = null;
+            showCloseConfirmModal = false;
+        }
     }
 
     function closeTab(id: string) {
@@ -71,7 +93,7 @@
     function handleTabClick(event: MouseEvent, id: string) {
         if (event.button === 1) { // Middle click
             event.preventDefault();
-            closeTab(id);
+            handleCloseTab(id);
         }
     }
 
@@ -145,7 +167,7 @@
                                 {tab.name}
                             </span>
                             <button
-                                on:click|stopPropagation={() => closeTab(tab.id)}
+                                on:click|stopPropagation={() => handleCloseTab(tab.id)}
                                 class="ml-2 text-gray-400 hover:text-gray-100 transition-colors duration-200"
                                 aria-label="Close {tab.name}"
                             >
@@ -194,6 +216,18 @@
     <BottomBar />
 
     <FileFinder bind:show={showFileFinder} on:close={() => showFileFinder = false} />
+    
+    <Modal
+        bind:show={showCloseConfirmModal}
+        title="Unsaved Changes"
+        confirmText="Close without saving"
+        cancelText="Cancel"
+        confirmButtonClass="bg-red-600 hover:bg-red-700"
+        on:confirm={confirmCloseTab}
+        on:close={() => showCloseConfirmModal = false}
+    >
+        <p>You have unsaved changes in this file. Are you sure you want to close it?</p>
+    </Modal>
 </div>
 
 <style>
