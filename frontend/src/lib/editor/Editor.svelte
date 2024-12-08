@@ -181,6 +181,12 @@
                 console.log('Saving file...');
                 fileStore.saveFile(fileStore.getActiveFilepath() || '');
             });
+
+            // Setup Ctrl+P for file finder using action system
+            VimMode.Vim.defineAction('showFileFinder', (_cm: any) => {
+                dispatch('showFileFinder');
+            });
+            VimMode.Vim.mapCommand('<C-p>', 'action', 'showFileFinder', {}, { context: 'normal' });
         }
 
         // Set initial content if there's an active file
