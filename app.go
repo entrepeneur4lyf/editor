@@ -73,6 +73,11 @@ func (a *App) GetProjectFiles(projectPath string) (*service.FileNode, error) {
 	return a.files.GetProjectFiles(projectPath)
 }
 
+// LoadDirectoryContents loads the contents of a specific directory
+func (a *App) LoadDirectoryContents(dirPath string) (*service.FileNode, error) {
+	return a.files.LoadDirectoryContents(dirPath)
+}
+
 // GetFileContent returns the content of a file
 func (a *App) GetFileContent(path string) (string, error) {
 	return a.files.GetFileContent(path)

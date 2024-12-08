@@ -5,9 +5,11 @@
         FolderOpen,
         Folder,
         File,
+        Loader2,
     } from "lucide-svelte";
     import type { service } from '@/lib/wailsjs/go/models';
     import { fileStore } from '@/stores/fileStore';
+    import { LoadDirectoryContents } from '@/lib/wailsjs/go/main/App';
 
     type FileNode = service.FileNode;
 
@@ -18,6 +20,7 @@
     export let isAllCollapsed = false;
 
     let isOpen = false;
+    let isLoading = false;
     let editingName = item.name;
     let inputElement: HTMLInputElement;
 
@@ -31,9 +34,23 @@
         }
     }
 
-    function toggleFolder(e: MouseEvent) {
+    async function toggleFolder(e: MouseEvent) {
         e.stopPropagation();
         if (isDirectory) {
+            if (!item.isLoaded && !isOpen) {
+                isLoading = true;
+                try {
+                    const updatedNode = await LoadDirectoryContents(item.path);
+                    if (updatedNode) {
+                        item.children = updatedNode.children;
+                        item.isLoaded = true;
+                    }
+                } catch (error) {
+                    console.error('Error loading directory:', error);
+                } finally {
+                    isLoading = false;
+                }
+            }
             isOpen = !isOpen;
         } else {
             fileStore.openFile(item.path);
@@ -69,7 +86,9 @@
         <div class="flex items-center flex-1 overflow-hidden"  style="padding-left: {depth * 0.5}rem">
             {#if isDirectory}
                 <div class="w-4 h-4 flex items-center justify-center">
-                    {#if hasChildren}
+                    {#if isLoading}
+                        <Loader2 class="animate-spin" size={16} />
+                    {:else if hasChildren}
                         {#if isOpen}
                             <ChevronDown size={16} />
                         {:else}

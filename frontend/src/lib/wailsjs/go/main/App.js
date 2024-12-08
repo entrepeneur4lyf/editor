@@ -22,6 +22,10 @@ export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
+export function LoadDirectoryContents(arg1) {
+  return window['go']['main']['App']['LoadDirectoryContents'](arg1);
+}
+
 export function OpenProjectFolder() {
   return window['go']['main']['App']['OpenProjectFolder']();
 }

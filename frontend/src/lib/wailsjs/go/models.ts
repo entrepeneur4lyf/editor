@@ -53,6 +53,7 @@ export namespace service {
 	    // Go type: time
 	    lastModified: any;
 	    children?: FileNode[];
+	    isLoaded: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new FileNode(source);
@@ -66,6 +67,7 @@ export namespace service {
 	        this.size = source["size"];
 	        this.lastModified = this.convertValues(source["lastModified"], null);
 	        this.children = this.convertValues(source["children"], FileNode);
+	        this.isLoaded = source["isLoaded"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
