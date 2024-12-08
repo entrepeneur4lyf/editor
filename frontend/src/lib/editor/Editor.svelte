@@ -4,6 +4,9 @@
     import { fileStore } from '@/stores/fileStore';
     import { editorConfigStore } from '@/stores/editorConfigStore';
     import { initVimMode } from 'monaco-vim';
+    import { createEventDispatcher } from 'svelte';
+
+    const dispatch = createEventDispatcher();
 
     let editorContainer: HTMLElement;
     let editor: monaco.editor.IStandaloneCodeEditor;
@@ -126,6 +129,16 @@
         return () => disposable.dispose();
     }
 
+    // Function to handle keyboard events
+    function handleKeydown(event: KeyboardEvent) {
+        // If vim mode is enabled, prevent Ctrl+P and show fuzzy finder
+        if (vimEnabled && event.ctrlKey && event.key.toLowerCase() === 'p') {
+            event.preventDefault();
+            event.stopPropagation();
+            dispatch('showFileFinder');
+        }
+    }
+
     onMount(() => {
         // Create editor with initial config
         const config = $editorConfigStore.editor;
@@ -152,6 +165,10 @@
 
         // Initialize vim mode if enabled in config
         vimEnabled = config.vim?.enabled || false;
+        if (vimEnabled) {
+            window.addEventListener('keydown', handleKeydown, true);
+            vimMode = initVimMode(editor, vimStatusBar);
+        }
 
         // Set initial content if there's an active file
         if ($fileStore.activeFilePath) {
@@ -170,6 +187,8 @@
         if (editor) {
             editor.dispose();
         }
+        // Remove keyboard event listener
+        window.removeEventListener('keydown', handleKeydown, true);
     });
 </script>
 
@@ -180,7 +199,7 @@
     />
     <div 
         bind:this={vimStatusBar}
-        class="h-6 bg-gray-800 border-t border-gray-700 px-2 flex items-center text-sm"
+        class="h-6 bg-gray-800 border-t border-gray-700 px-2 flex items-center text-sm absolute bottom-0 right-0 left-0 z-10"
         class:hidden={!vimEnabled}
     />
 </div>
