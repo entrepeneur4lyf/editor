@@ -134,25 +134,9 @@
         return () => disposable.dispose();
     }
 
-    // Function to handle keyboard events
-    function handleKeydown(event: KeyboardEvent) {
-        // If vim mode is enabled, prevent Ctrl+P and show fuzzy finder
-        if (vimEnabled && event.ctrlKey && event.key.toLowerCase() === 'p') {
-            event.preventDefault();
-            event.stopPropagation();
-            dispatch('showFileFinder');
-        }
-    }
-
     onMount(() => {
         // Create editor with initial config
         const config = $editorConfigStore.editor;
-
-        // Register the showFileFinder command
-        monaco.editor.addCommand({
-            id: 'editor.showFileFinder',
-            run: () => dispatch('showFileFinder')
-        });
 
         editor = monaco.editor.create(editorContainer, {
             theme: config.theme,
@@ -178,7 +162,6 @@
         // Initialize vim mode if enabled in config
         vimEnabled = config.vim?.enabled || false;
         if (vimEnabled) {
-            window.addEventListener('keydown', handleKeydown, true);
             vimMode = initVimMode(editor, vimStatusBar);
             
             // Define custom :w command for saving
@@ -211,8 +194,6 @@
         if (editor) {
             editor.dispose();
         }
-        // Remove keyboard event listener
-        window.removeEventListener('keydown', handleKeydown, true);
     });
 </script>
 
