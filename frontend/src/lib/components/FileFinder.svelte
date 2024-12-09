@@ -23,7 +23,7 @@
     let previousShow = show;
     let vimModeEnabled = false;
     let searchQuery = "";
-    let results: service.FileNode[] = [];
+    let results: (service.FileNode & { isOpen: boolean })[] = [];
     let selectedIndex = 0;
     let loading = false;
     let error = null;
@@ -34,17 +34,26 @@
     let mounted = false;
     let finderId = focusStore.generateId('file-finder');
 
+    // Convert open files to search results format
+    function getOpenFilesAsResults() {
+        return Array.from($fileStore.openFiles.entries()).map(([path, file]) => ({
+            name: path.split('/').pop() || '',
+            path,
+            type: 'file',
+            isOpen: true
+        }));
+    }
+
     // Reset all states
     function resetState() {
         if (debounceTimer) {
             clearTimeout(debounceTimer);
             debounceTimer = null;
         }
-        results = [];
+        results = getOpenFilesAsResults();
         selectedIndex = 0;
         loading = false;
         error = null;
-        currentSearch = null;
     }
 
     // Perform search
@@ -63,7 +72,19 @@
 
             const searchResults = await thisSearch;
             if (counter === searchCounter && show) {
-                results = searchResults || [];
+                // Get open files for merging
+                const openFiles = new Set($fileStore.openFiles.keys());
+                
+                // Mark open files and sort them to top
+                results = (searchResults || []).map(file => ({
+                    ...file,
+                    isOpen: openFiles.has(file.path)
+                })).sort((a, b) => {
+                    if (a.isOpen && !b.isOpen) return -1;
+                    if (!a.isOpen && b.isOpen) return 1;
+                    return 0;
+                });
+
                 selectedIndex = Math.min(
                     selectedIndex,
                     Math.max(0, results.length - 1),
@@ -82,22 +103,13 @@
     }
 
     // Watch for show changes
-    $: {
-        if (show !== previousShow) {
-            if (show) {
-                setKeyboardContext("fileFinder");
-                searchQuery = "";
-                focusStore.focus("file-finder", finderId);
-                if (inputElement) {
-                    setTimeout(() => inputElement.focus(), 0);
-                }
-            } else {
-                setKeyboardContext("global");
-                focusStore.restorePrevious();
-            }
-            resetState();
-            previousShow = show;
-        }
+    $: if (show && !previousShow) {
+        searchQuery = "";
+        resetState();
+        previousShow = show;
+        focusStore.focus('file-finder', finderId);
+    } else if (!show) {
+        previousShow = show;
     }
 
     // Handle search query changes
@@ -255,21 +267,30 @@
                                 {index === selectedIndex ? 'bg-gray-800' : ''}"
                             on:click={() => handleSelect(file)}
                         >
-                            <svelte:component
-                                this={file.type === "directory" ? Folder : File}
-                                size={16}
-                                class="text-gray-400 flex-shrink-0"
-                            />
-                            <div class="flex flex-col min-w-0">
-                                <span class="text-gray-300 font-medium truncate"
-                                    >{file.name}</span
-                                >
-                                {#if file.path}
-                                    <span class="text-gray-500 text-sm truncate"
-                                        >{removeBasedir(file.path)}</span
+                            <div class="flex items-center gap-3 flex-1">
+                                <svelte:component
+                                    this={file.type === "directory" ? Folder : File}
+                                    size={16}
+                                    class="text-gray-400 flex-shrink-0"
+                                />
+                                <div class="flex flex-col min-w-0">
+                                    <span class="text-gray-300 font-medium truncate"
+                                        >{file.name}</span
                                     >
-                                {/if}
+                                    {#if file.path}
+                                        <span class="text-gray-500 text-sm truncate"
+                                            >{removeBasedir(file.path)}</span
+                                        >
+                                    {/if}
+                                </div>
                             </div>
+                            {#if file.isOpen}
+                                <div class="flex-shrink-0">
+                                    <span class="px-1.5 py-0.5 bg-gray-800 rounded text-xs text-gray-400 border border-gray-700">
+                                        Open
+                                    </span>
+                                </div>
+                            {/if}
                         </button>
                     {/each}
                 </div>
