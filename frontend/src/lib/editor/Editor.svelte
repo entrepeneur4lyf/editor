@@ -7,6 +7,7 @@
     import { initVimMode, VimMode } from 'monaco-vim';
     import { createEventDispatcher } from 'svelte';
     import { focusStore } from '@/stores/focusStore';
+    import Breadcrumbs from "@/lib/editor/Breadcrumbs.svelte";
 
     const dispatch = createEventDispatcher();
 
@@ -241,15 +242,23 @@
     });
 </script>
 
-<div class="flex flex-col h-full">
-    <div
-        bind:this={editorContainer}
-        class="w-full flex-1"
-        on:focus={handleEditorFocus}
-    />
-    <div 
-        bind:this={vimStatusBar}
-        class="h-6 bg-gray-800 border-t border-gray-700 px-2 flex items-center text-sm absolute bottom-0 right-0 left-0 z-10"
-        class:hidden={!vimEnabled}
-    />
+<div class="h-full relative flex flex-col">
+    {#if $fileStore.activeFilePath}
+        <Breadcrumbs filepath={$fileStore.activeFilePath} />
+    {/if}
+    
+    <div class="flex-1 relative">
+        <div
+            bind:this={editorContainer}
+            class="w-full h-full flex-1"
+            on:focus={handleEditorFocus}
+        />
+    </div>
+
+    {#if $editorConfigStore.editor.vim?.enabled}
+        <div 
+            bind:this={vimStatusBar}
+            class="h-6 bg-gray-800 border-t border-gray-700 px-2 flex items-center text-sm absolute bottom-0 right-0 left-0 z-10"
+        />
+    {/if}
 </div>
