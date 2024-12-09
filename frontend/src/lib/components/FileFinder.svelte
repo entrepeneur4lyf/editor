@@ -7,7 +7,7 @@
     } from "svelte";
     import { Search, File, Folder } from "lucide-svelte";
     import Input from "./Input.svelte";
-    import { setKeyboardContext } from "@/stores/keyboardStore";
+    import { setKeyboardContext, addKeyboardContext, removeKeyboardContext, keyBindings, registerCommand } from "@/stores/keyboardStore";
     import { SearchFiles } from "@/lib/wailsjs/go/main/App";
     import { projectStore } from "@/stores/project";
     import { fileStore } from "@/stores/fileStore";
@@ -190,6 +190,12 @@
         closeFileFinder();
     }
 
+    async function handleQuickSelect(index: number) {
+        if (index < results.length) {
+            await handleSelect(results[index]);
+        }
+    }
+
     function closeFileFinder() {
         resetState();
         searchQuery = "";
@@ -212,12 +218,20 @@
 
     onMount(() => {
         mounted = true;
+        addKeyboardContext('fileFinder');
+
+        // Set up quick selection actions
+        Array.from({ length: 9 }, (_, i) => {
+            registerCommand(`fuzzyFinderSelect${i + 1}`, async () => await handleQuickSelect(i));
+        });
+
         if (show && inputElement) {
             inputElement.focus();
         }
     });
 
     onDestroy(() => {
+        removeKeyboardContext('fileFinder');
         mounted = false;
         resetState();
         setKeyboardContext("global");
@@ -284,13 +298,18 @@
                                     {/if}
                                 </div>
                             </div>
-                            {#if file.isOpen}
-                                <div class="flex-shrink-0">
+                            <div class="flex items-center gap-2">
+                                {#if index < 9}
+                                    <span class="px-1.5 py-0.5 bg-gray-800 rounded text-xs text-gray-400 border border-gray-700">
+                                        Alt+{index + 1}
+                                    </span>
+                                {/if}
+                                {#if file.isOpen}
                                     <span class="px-1.5 py-0.5 bg-gray-800 rounded text-xs text-gray-400 border border-gray-700">
                                         Open
                                     </span>
-                                </div>
-                            {/if}
+                                {/if}
+                            </div>
                         </button>
                     {/each}
                 </div>
