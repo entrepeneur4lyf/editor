@@ -40,7 +40,7 @@ func (a *App) startup(ctx context.Context) {
 
 	config, err := service.NewConfigService()
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("Failed to initialize ConfigService: %v", err))
 	}
 	a.config = config
 }
