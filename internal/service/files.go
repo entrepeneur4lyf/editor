@@ -12,6 +12,7 @@ import (
 
 	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/sahilm/fuzzy"
+	"io/fs"
 )
 
 // FileNode represents a file or directory in the project
@@ -286,62 +287,64 @@ func (s *FileService) SearchFiles(ctx context.Context, dirPath, query string) ([
 	var allFiles []*FileNode
 	var searchPaths []string
 
-	// Get the file tree
-	root, err := s.GetProjectFiles(dirPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Debug: Print root structure
-	fmt.Printf("Root node: %s, Type: %s, Children: %d\n", root.Name, root.Type, len(root.Children))
-
-	// Collect all files recursively
-	var collectFiles func(*FileNode, string)
-	collectFiles = func(node *FileNode, currentPath string) {
-		if node == nil {
-			return
+	// Walk the directory tree
+	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
 
 		// Check for cancellation
 		select {
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		default:
 		}
 
-		// Build the current path
-		nodePath := filepath.Join(currentPath, node.Name)
+		// Skip if ignored
+		if s.isIgnored(dirPath, path) {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
 
-		// Debug: Print current node
-		fmt.Printf("Processing node: %s, Type: %s, Path: %s\n", node.Name, node.Type, nodePath)
+		// Skip directories in the results
+		if d.IsDir() {
+			return nil
+		}
 
-		// Process current node if it's a file
-		if node.Type == "file" && !s.isIgnored(dirPath, node.Path) {
-			// Create relative path by removing project base path
-			relPath := strings.TrimPrefix(node.Path, dirPath)
-			relPath = strings.TrimPrefix(relPath, "/")
-			fmt.Printf("Adding file: %s, RelPath: %s\n", node.Name, relPath)
+		// Get file info
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+
+		// Create file node
+		node := &FileNode{
+			Name:         d.Name(),
+			Path:         path,
+			Type:         "file",
+			Size:         info.Size(),
+			LastModified: info.ModTime(),
+			IsLoaded:     true,
+		}
+
+		// Get relative path for search
+		relPath, err := filepath.Rel(dirPath, path)
+		if err == nil {
 			searchPaths = append(searchPaths, relPath)
 			allFiles = append(allFiles, node)
 		}
+		return nil
+	})
 
-		// Process all children regardless of type
-		if node.Children != nil {
-			for _, child := range node.Children {
-				collectFiles(child, nodePath)
-			}
-		}
+	if err != nil {
+		return nil, err
 	}
-
-	// Start traversal from root only
-	collectFiles(root, "")
 
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-
-	fmt.Printf("Total files collected: %d\n", len(allFiles))
-	fmt.Printf("Search paths: %v\n", searchPaths)
 
 	// If no query, return first 10 files
 	if query == "" || len(allFiles) == 0 {
@@ -354,7 +357,6 @@ func (s *FileService) SearchFiles(ctx context.Context, dirPath, query string) ([
 
 	// Use fuzzy library to search
 	matches := fuzzy.Find(query, searchPaths)
-	fmt.Printf("Fuzzy matches found: %d\n", len(matches))
 
 	// Sort matches by score (already done by fuzzy.Find)
 	results := make([]*FileNode, 0, len(matches))
@@ -370,7 +372,6 @@ func (s *FileService) SearchFiles(ctx context.Context, dirPath, query string) ([
 			continue
 		}
 
-		fmt.Printf("Match: %s (Score: %d)\n", searchPaths[match.Index], match.Score)
 		results = append(results, allFiles[match.Index])
 		seen[allFiles[match.Index].Path] = true
 	}
