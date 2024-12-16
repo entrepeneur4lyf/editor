@@ -199,6 +199,7 @@
     function closeFileFinder() {
         resetState();
         searchQuery = "";
+        vimModeEnabled = false;
         selectedIndex = 0;
         show = false;
         focusStore.restorePrevious();
