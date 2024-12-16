@@ -248,7 +248,7 @@
             class="w-[600px] bg-gray-900 rounded-lg shadow-xl border border-gray-700 overflow-hidden"
             on:click|stopPropagation
         >
-            <div class="relative">
+            <div class="relative bg">
                 <div class="pl-10">
                     <Input
                         bind:value={searchQuery}
@@ -276,43 +276,40 @@
                 </div>
             {:else if results.length > 0}
                 <div class="max-h-[400px] overflow-y-auto">
-                    {#each results as file, index}
-                        <button
-                            class="w-full px-4 py-2 flex items-center gap-3 text-left hover:bg-gray-800
-                                {index === selectedIndex ? 'bg-gray-800' : ''}"
-                            on:click={() => handleSelect(file)}
-                        >
-                            <div class="flex items-center gap-3 flex-1">
-                                <svelte:component
-                                    this={file.type === "directory" ? Folder : File}
-                                    size={16}
-                                    class="text-gray-400 flex-shrink-0"
-                                />
-                                <div class="flex flex-col min-w-0">
-                                    <span class="text-gray-300 font-medium truncate"
-                                        >{file.name}</span
-                                    >
-                                    {#if file.path}
-                                        <span class="text-gray-500 text-sm truncate"
-                                            >{removeBasedir(file.path)}</span
-                                        >
+                    <div class="w-full">
+                        {#each results as file, index}
+                            <button
+                                class="w-full px-4 py-2 flex items-center justify-between text-left hover:bg-gray-800 {index === selectedIndex ? 'bg-gray-800' : ''}"
+                                on:click={() => handleSelect(file)}
+                            >
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <svelte:component
+                                        this={file.type === "directory" ? Folder : File}
+                                        size={16}
+                                        class="text-gray-400 flex-shrink-0"
+                                    />
+                                    <div class="flex flex-col min-w-0 flex-1">
+                                        <span class="text-gray-300 font-medium truncate">{file.name}</span>
+                                        {#if file.path}
+                                            <span class="text-gray-500 text-sm truncate max-w-full">{removeBasedir(file.path)}</span>
+                                        {/if}
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2 flex-shrink-0 ml-2">
+                                    {#if index < 9}
+                                        <span class="px-1.5 py-0.5 bg-gray-800 rounded text-xs text-gray-400 border border-gray-700">
+                                            Alt+{index + 1}
+                                        </span>
+                                    {/if}
+                                    {#if file.isOpen}
+                                        <span class="px-1.5 py-0.5 bg-gray-800 rounded text-xs text-gray-400 border border-gray-700">
+                                            Open
+                                        </span>
                                     {/if}
                                 </div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                {#if index < 9}
-                                    <span class="px-1.5 py-0.5 bg-gray-800 rounded text-xs text-gray-400 border border-gray-700">
-                                        Alt+{index + 1}
-                                    </span>
-                                {/if}
-                                {#if file.isOpen}
-                                    <span class="px-1.5 py-0.5 bg-gray-800 rounded text-xs text-gray-400 border border-gray-700">
-                                        Open
-                                    </span>
-                                {/if}
-                            </div>
-                        </button>
-                    {/each}
+                            </button>
+                        {/each}
+                    </div>
                 </div>
             {:else if searchQuery.trim()}
                 <div class="px-4 py-8 text-center text-gray-500">
