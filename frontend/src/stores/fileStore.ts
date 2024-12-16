@@ -1,6 +1,6 @@
 import { writable, get } from 'svelte/store';
 import type { service } from '@/lib/wailsjs/go/models';
-import { GetProjectFiles, GetFileContent, SaveFile } from '@/lib/wailsjs/go/main/App';
+import { GetProjectFiles, GetFileContent, SaveFile, CreateFile, CreateDirectory, RenameFile, DeleteFile } from '@/lib/wailsjs/go/main/App';
 
 type FileNode = service.FileNode;
 
@@ -214,6 +214,46 @@ function createFileStore() {
                     ...state,
                     error: err instanceof Error ? err.message : 'Failed to save file'
                 }));
+            }
+        },
+
+        // Create new file
+        async createFile(path: string): Promise<void> {
+            try {
+                await CreateFile(path);
+                await this.refreshFiles();
+            } catch (error) {
+                update(state => ({ ...state, error: `Failed to create file: ${error}` }));
+            }
+        },
+
+        // Create new directory
+        async createDirectory(path: string): Promise<void> {
+            try {
+                await CreateDirectory(path);
+                await this.refreshFiles();
+            } catch (error) {
+                update(state => ({ ...state, error: `Failed to create directory: ${error}` }));
+            }
+        },
+
+        // Rename file or directory
+        async renameFile(oldPath: string, newPath: string): Promise<void> {
+            try {
+                await RenameFile(oldPath, newPath);
+                await this.refreshFiles();
+            } catch (error) {
+                update(state => ({ ...state, error: `Failed to rename: ${error}` }));
+            }
+        },
+
+        // Delete file or directory
+        async deleteFile(path: string): Promise<void> {
+            try {
+                await DeleteFile(path);
+                await this.refreshFiles();
+            } catch (error) {
+                update(state => ({ ...state, error: `Failed to delete: ${error}` }));
             }
         },
 

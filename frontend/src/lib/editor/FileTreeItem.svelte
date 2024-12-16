@@ -21,6 +21,7 @@
 
     let isOpen = false;
     let isLoading = false;
+    let isRenaming = false;
     let editingName = item.name;
     let inputElement: HTMLInputElement;
 
@@ -57,13 +58,36 @@
         }
     }
 
-    function handleRenameSubmit(e: Event) {
-        e.preventDefault();
-        onRename(item.path, editingName);
+    function startRename() {
+        isRenaming = true;
+        editingName = item.name;
+        // Focus and select text after the component updates
+        setTimeout(() => {
+            if (inputElement) {
+                inputElement.focus();
+                inputElement.select();
+            }
+        }, 0);
     }
 
-    function handleRenameChange(e: Event) {
-        editingName = (e.target as HTMLInputElement).value;
+    function handleRenameKeydown(e: KeyboardEvent) {
+        if (e.key === 'Enter') {
+            finishRename();
+        } else if (e.key === 'Escape') {
+            cancelRename();
+        }
+    }
+
+    function finishRename() {
+        if (editingName && editingName !== item.name) {
+            onRename(item.path, editingName);
+        }
+        isRenaming = false;
+    }
+
+    function cancelRename() {
+        editingName = item.name;
+        isRenaming = false;
     }
 </script>
 
@@ -76,6 +100,8 @@
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 toggleFolder(e);
+            } else if (e.key === 'F2') {
+                startRename();
             }
         }}
         role="button"
@@ -83,7 +109,7 @@
         aria-expanded={item.type === 'directory' ? isOpen : undefined}
         aria-label={`${item.name} ${item.type}`}
     >
-        <div class="flex items-center flex-1 overflow-hidden"  style="padding-left: {depth * 0.5}rem">
+        <div class="flex items-center flex-1 overflow-hidden" style="padding-left: {depth * 0.5}rem">
             {#if isDirectory}
                 <div class="w-4 h-4 flex items-center justify-center">
                     {#if isLoading}
@@ -109,19 +135,18 @@
                 </div>
             {/if}
 
-            {#if item.isRenaming}
-                <form on:submit={handleRenameSubmit} class="flex-1">
-                    <input
-                        bind:this={inputElement}
-                        type="text"
-                        class="w-full bg-gray-800 text-sm px-1 rounded"
-                        value={editingName}
-                        on:change={handleRenameChange}
-                        on:blur={() => onRename(item.path, editingName)}
-                    />
-                </form>
+            {#if isRenaming}
+                <input
+                    bind:this={inputElement}
+                    bind:value={editingName}
+                    on:blur={finishRename}
+                    on:keydown={handleRenameKeydown}
+                    class="ml-2 px-1 py-0.5 bg-gray-800 border border-sky-500 rounded text-sm focus:outline-none"
+                />
             {:else}
-                <span class="ml-1 truncate">{item.name}</span>
+                <span class="ml-2 text-sm truncate" class:font-medium={isActive}>
+                    {item.name}
+                </span>
             {/if}
         </div>
     </div>
