@@ -67,11 +67,31 @@ function createFileStore() {
 
         // Set current project
         setCurrentProject(projectPath: string) {
-            // Clear existing state when opening a new project
-            if (projectPath !== get({ subscribe }).currentProjectPath) {
-                this.clearState();
+            const state = get({ subscribe });
+            
+            // If changing projects, only keep open files from the new project
+            if (projectPath !== state.currentProjectPath) {
+                update(state => {
+                    const newOpenFiles = new Map();
+                    
+                    // Only keep files that belong to the new project
+                    state.openFiles.forEach((file, path) => {
+                        if (path.startsWith(projectPath)) {
+                            newOpenFiles.set(path, file);
+                        }
+                    });
+
+                    return {
+                        fileTree: null,
+                        activeFilePath: Array.from(newOpenFiles.keys())[0] || null,
+                        currentProjectPath: projectPath,
+                        openFiles: newOpenFiles,
+                        loading: false,
+                        error: null,
+                    };
+                });
             }
-            update(state => ({ ...state, currentProjectPath: projectPath }));
+
             return this.loadProjectFiles();
         },
 
