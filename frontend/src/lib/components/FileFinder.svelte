@@ -16,7 +16,7 @@
 
     const dispatch = createEventDispatcher<{
         close: void;
-        select: any;
+        select: { path: string };
     }>();
 
     export let show = false;
@@ -225,6 +225,7 @@
     async function handleSelect(file: any) {
         if (file.type === "file") {
             await fileStore.openFile(file.path);
+            dispatch('select', { path: file.path });
         }
         closeFileFinder();
     }

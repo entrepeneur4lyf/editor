@@ -37,21 +37,22 @@
 
     async function toggleFolder(e: MouseEvent) {
         e.stopPropagation();
-        if (item.type === "directory") {
-            // If directory is not loaded yet, load its contents
-            if (!item.isLoaded) {
+        if (isDirectory) {
+            if (!item.isLoaded && !isOpen) {
+                isLoading = true;
                 try {
-                    const contents = await fileStore.loadDirectoryContents(item.path);
-                    if (contents) {
-                        item.children = contents.children;
+                    const updatedNode = await LoadDirectoryContents(item.path);
+                    if (updatedNode) {
+                        item.children = updatedNode.children;
                         item.isLoaded = true;
                     }
                 } catch (error) {
-                    console.error('Error loading directory contents:', error);
+                    console.error('Error loading directory:', error);
+                } finally {
+                    isLoading = false;
                 }
             }
             isOpen = !isOpen;
-            item.expanded = isOpen;
         } else {
             fileStore.openFile(item.path);
         }
