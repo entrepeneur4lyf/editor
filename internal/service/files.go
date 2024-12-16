@@ -51,52 +51,10 @@ func (s *FileService) GetProjectFiles(projectPath string) (*FileNode, error) {
 	}
 	s.cacheLock.RUnlock()
 
-	// Create root node
-	root := &FileNode{
-		Name: filepath.Base(projectPath),
-		Path: projectPath,
-		Type: "directory",
-	}
-
-	// Read directory contents
-	entries, err := os.ReadDir(projectPath)
+	// Build only top level tree initially
+	root, err := s.buildTopLevelTree(projectPath)
 	if err != nil {
 		return nil, err
-	}
-
-	// Process entries
-	for _, entry := range entries {
-		childPath := filepath.Join(projectPath, entry.Name())
-
-		// Skip if ignored
-		if s.isIgnored(projectPath, childPath) {
-			continue
-		}
-
-		// Create child node
-		child := &FileNode{
-			Name: entry.Name(),
-			Path: childPath,
-		}
-
-		if entry.IsDir() {
-			child.Type = "directory"
-			// Recursively process subdirectory
-			childNode, err := s.GetProjectFiles(childPath)
-			if err != nil {
-				continue
-			}
-			child = childNode
-		} else {
-			child.Type = "file"
-			info, err := entry.Info()
-			if err == nil {
-				child.Size = info.Size()
-				child.LastModified = info.ModTime()
-			}
-		}
-
-		root.Children = append(root.Children, child)
 	}
 
 	// Sort children

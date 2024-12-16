@@ -1,6 +1,6 @@
 import { writable, get } from 'svelte/store';
 import type { service } from '@/lib/wailsjs/go/models';
-import { GetProjectFiles, GetFileContent, SaveFile, CreateFile, CreateDirectory, RenameFile, DeleteFile } from '@/lib/wailsjs/go/main/App';
+import { GetProjectFiles, GetFileContent, SaveFile, CreateFile, CreateDirectory, RenameFile, DeleteFile, LoadDirectoryContents } from '@/lib/wailsjs/go/main/App';
 
 type FileNode = service.FileNode;
 
@@ -254,6 +254,39 @@ function createFileStore() {
                 await this.refreshFiles();
             } catch (error) {
                 update(state => ({ ...state, error: `Failed to delete: ${error}` }));
+            }
+        },
+
+        // Load directory contents
+        async loadDirectoryContents(path: string) {
+            try {
+                const node = await LoadDirectoryContents(path);
+                
+                // Update the file tree with the new contents
+                update(state => {
+                    const updateNode = (nodes: FileNode[]) => {
+                        for (let i = 0; i < nodes.length; i++) {
+                            if (nodes[i].path === path) {
+                                nodes[i] = { ...nodes[i], ...node, isLoaded: true };
+                                return true;
+                            }
+                            if (nodes[i].children && updateNode(nodes[i].children)) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    };
+
+                    if (state.fileTree) {
+                        updateNode(state.fileTree);
+                    }
+                    return state;
+                });
+
+                return node;
+            } catch (err) {
+                console.error('Failed to load directory contents:', err);
+                return null;
             }
         },
 
