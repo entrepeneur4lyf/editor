@@ -23,6 +23,8 @@
     let previousShow = show;
     let vimModeEnabled = false;
     let searchQuery = "";
+    let previousBaseQuery = ""; // Store the previous base query
+    let baseResults: (service.FileNode & { isOpen: boolean })[] = []; // Store base results
     let results: (service.FileNode & { isOpen: boolean })[] = [];
     let selectedIndex = 0;
     let loading = false;
@@ -51,9 +53,19 @@
             debounceTimer = null;
         }
         results = getOpenFilesAsResults();
+        baseResults = [];
+        previousBaseQuery = "";
         selectedIndex = 0;
         loading = false;
         error = null;
+    }
+
+    // Filter existing results with additional terms
+    function filterResults(terms: string[]): (service.FileNode & { isOpen: boolean })[] {
+        return baseResults.filter(file => {
+            const lowerPath = file.path.toLowerCase();
+            return terms.every(term => lowerPath.includes(term.toLowerCase()));
+        });
     }
 
     // Perform search
@@ -63,10 +75,23 @@
             return;
         }
 
+        const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+        
+        // If we have a previous base query and this query starts with it
+        if (previousBaseQuery && 
+            query.toLowerCase().startsWith(previousBaseQuery.toLowerCase()) && 
+            terms.length > 1) {
+            // Filter existing results instead of doing a new search
+            results = filterResults(terms);
+            loading = false;
+            return;
+        }
+
         try {
+            // This is a new base search
             const thisSearch = SearchFiles(
                 $projectStore.currentProject!.Path,
-                query,
+                terms[0] // Use only the first term for backend search
             );
             currentSearch = thisSearch;
 
@@ -76,7 +101,7 @@
                 const openFiles = new Set($fileStore.openFiles.keys());
                 
                 // Mark open files and sort them to top
-                results = (searchResults || []).map(file => ({
+                baseResults = (searchResults || []).map(file => ({
                     ...file,
                     isOpen: openFiles.has(file.path)
                 })).sort((a, b) => {
@@ -85,14 +110,26 @@
                     return 0;
                 });
 
+                // Store the base query for future refinements
+                previousBaseQuery = terms[0];
+
+                // If there are additional terms, filter the results
+                if (terms.length > 1) {
+                    results = filterResults(terms);
+                } else {
+                    results = baseResults;
+                }
+
                 selectedIndex = Math.min(
                     selectedIndex,
-                    Math.max(0, results.length - 1),
+                    Math.max(0, results.length - 1)
                 );
             }
         } catch (err) {
             if (counter === searchCounter && show) {
                 results = [];
+                baseResults = [];
+                previousBaseQuery = "";
                 error = err.message;
             }
         } finally {
@@ -123,7 +160,6 @@
             searchCounter++; // Increment counter for new search attempt
             const currentCounter = searchCounter;
 
-            // Don't trim the query - allow spaces
             if (searchQuery === "") {
                 resetState();
             } else {
@@ -131,11 +167,7 @@
                 error = null;
                 debounceTimer = setTimeout(() => {
                     if (show && currentCounter === searchCounter) {
-                        // Remove leading and trailing and inner spaces
-                        performSearch(
-                            searchQuery.trim().replace(/\s+/g, ""),
-                            currentCounter,
-                        );
+                        performSearch(searchQuery, currentCounter);
                     } else {
                         loading = false;
                     }
@@ -149,11 +181,18 @@
 
         // Enable vim mode when Alt+J are pressed together
         if (event.altKey && event.key.toLowerCase() === "j") {
+            vimModeEnabled = !vimModeEnabled;
             event.preventDefault();
-            vimModeEnabled = true;
             return;
         }
 
+        // Close modal on Alt + Number
+        if (event.altKey && /^[0-9]$/.test(event.key)) {
+            event.preventDefault();
+            dispatch("close");
+            return;
+        }
+        
         switch (event.key) {
             case "ArrowDown":
             case "j":
@@ -221,10 +260,15 @@
         mounted = true;
         addKeyboardContext('fileFinder');
 
-        // Set up quick selection actions
-        Array.from({ length: 9 }, (_, i) => {
-            registerCommand(`fuzzyFinderSelect${i + 1}`, async () => await handleQuickSelect(i));
-        });
+        // Register actions for fuzzy finder selection commands
+        for (let i = 1; i <= 9; i++) {
+            registerCommand(`fuzzyFinderSelect${i}`, () => {
+                const index = i - 1;
+                if (results[index]) {
+                    handleSelect(results[index]);
+                }
+            });
+        }
 
         if (show && inputElement) {
             inputElement.focus();
