@@ -24,6 +24,17 @@
     let isRenaming = false;
     let editingName = item.name;
     let inputElement: HTMLInputElement;
+    let validationError = '';
+    let originalName = '';
+
+    // Validation rules
+    const isValidFileName = (name: string) => {
+        if (!name || name.trim() === '') return 'Name cannot be empty';
+        if (name.includes('/') || name.includes('\\')) return 'Name cannot contain slashes';
+        if (name === '.' || name === '..') return 'Invalid file name';
+        if (/[<>:"|?*]/.test(name)) return 'Name contains invalid characters';
+        return '';
+    };
 
     $: isDirectory = item.type === "directory";
     $: hasChildren = isDirectory && item.children && item.children.length > 0;
@@ -32,6 +43,13 @@
     $: {
         if (isAllCollapsed) {
             isOpen = false;
+        }
+    }
+
+    // Watch for isRenaming changes from parent
+    $: {
+        if (item.isRenaming && !isRenaming) {
+            startRename();
         }
     }
 
@@ -71,23 +89,39 @@
     }
 
     function handleRenameKeydown(e: KeyboardEvent) {
-        if (e.key === 'Enter') {
+        e.stopPropagation();
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             finishRename();
         } else if (e.key === 'Escape') {
+            e.preventDefault();
             cancelRename();
         }
     }
 
+    function handleRenameInput() {
+        validationError = isValidFileName(editingName);
+    }
+
     function finishRename() {
+        const error = isValidFileName(editingName);
+        if (error) {
+            validationError = error;
+            return;
+        }
         if (editingName && editingName !== item.name) {
             onRename(item.path, editingName);
         }
         isRenaming = false;
+        item.isRenaming = false;
+        validationError = '';
     }
 
     function cancelRename() {
         editingName = item.name;
         isRenaming = false;
+        item.isRenaming = false;
+        validationError = '';
     }
 </script>
 
@@ -100,8 +134,6 @@
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 toggleFolder(e);
-            } else if (e.key === 'F2') {
-                startRename();
             }
         }}
         role="button"
@@ -136,13 +168,24 @@
             {/if}
 
             {#if isRenaming}
-                <input
-                    bind:this={inputElement}
-                    bind:value={editingName}
-                    on:blur={finishRename}
-                    on:keydown={handleRenameKeydown}
-                    class="ml-2 px-1 py-0.5 bg-gray-800 border border-sky-500 rounded text-sm focus:outline-none"
-                />
+                <div class="relative flex-grow ml-2">
+                    <input
+                        bind:this={inputElement}
+                        bind:value={editingName}
+                        on:blur={finishRename}
+                        on:keydown={handleRenameKeydown}
+                        on:input={handleRenameInput}
+                        class="w-full px-2 py-0.5 bg-gray-700 border rounded text-sm focus:outline-none
+                               {validationError ? 'border-red-500' : 'border-sky-500'} 
+                               hover:bg-gray-600 transition-colors duration-150"
+                        spellcheck="false"
+                    />
+                    {#if validationError}
+                        <div class="absolute left-0 top-full mt-1 px-2 py-1 bg-red-900/90 text-xs text-red-200 rounded shadow-lg z-10">
+                            {validationError}
+                        </div>
+                    {/if}
+                </div>
             {:else}
                 <span class="ml-2 text-sm truncate" class:font-medium={isActive}>
                     {item.name}
@@ -169,5 +212,15 @@
 <style>
     input {
         outline: none;
+    }
+
+    input::selection {
+        background-color: theme('colors.sky.900');
+        color: theme('colors.sky.100');
+    }
+
+    /* Prevent text selection while dragging */
+    span {
+        user-select: none;
     }
 </style>
