@@ -440,18 +440,9 @@ export function handleKeyboardEvent(event: KeyboardEvent) {
   }
 
     const currentBindings = get(keyBindings);
-    console.log('Handling keyboard event:', {
-        key: event.key,
-        ctrl: event.ctrlKey,
-        shift: event.shiftKey,
-        alt: event.altKey
-    });
-    console.log('Available bindings:', Object.keys(currentBindings));
 
     for (const [command, binding] of Object.entries(currentBindings)) {
-        console.log('Checking binding:', command, binding);
         if (matchesKeybinding(event, binding)) {
-            console.log('Matched binding:', command);
             event.preventDefault();
             binding.action();
             return;

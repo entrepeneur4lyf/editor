@@ -60,7 +60,6 @@
             
             // Define custom :w command for saving
             VimMode.Vim.defineEx('write', 'w', () => {
-                console.log('Saving file...');
                 fileStore.saveFile(fileStore.getActiveFilepath() || '');
             });
 

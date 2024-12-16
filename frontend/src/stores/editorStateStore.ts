@@ -52,7 +52,6 @@ function createEditorStateStore() {
                 const state = states[filePath];
 
                 if (!state) {
-                    console.log('No saved state found for', filePath);
                     return;
                 }
 
@@ -90,7 +89,6 @@ function createEditorStateStore() {
         // Debug: get current states
         debug: () => {
             const states = get(editorStateStore);
-            console.log('Current editor states:', states);
             return states;
         }
     };

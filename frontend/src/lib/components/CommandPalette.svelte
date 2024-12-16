@@ -42,7 +42,6 @@
 
     // Initialize when opening
     $: if (show) {
-        console.log('Command palette opened, adding commandPalette context');
         addKeyboardContext('commandPalette');
         filteredCommands = [...allCommands];
         selectedIndex = 0;
@@ -55,7 +54,6 @@
 
     // Reset state when closing
     $: if (!show && previousShow) {
-        console.log('Command palette closed, removing commandPalette context');
         removeKeyboardContext('commandPalette');
         searchQuery = '';
         selectedIndex = 0;
@@ -78,7 +76,6 @@
         previousShow = show;
     });
 
-    $: console.log('Vim mode:', vimModeEnabled);
 
     function handleKeyDown(event: KeyboardEvent) {
         if (!show) return;
@@ -86,7 +83,6 @@
         // Enable vim mode when Alt+J are pressed together
         if (event.altKey && event.key.toLowerCase() === 'j') {
             event.preventDefault();
-            console.log('Alt+J pressed, enabling vim mode');
             vimModeEnabled = true;
             return;
         }
@@ -137,7 +133,6 @@
     }
 
     function closeCommandPalette() {
-        console.log('Closing palette');
         show = false;
         dispatch('close');
     }
@@ -151,7 +146,6 @@
     }
 
     onDestroy(() => {
-        console.log('Component destroyed, removing commandPalette context');
         removeKeyboardContext('commandPalette');
     });
 
