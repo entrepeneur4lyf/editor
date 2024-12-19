@@ -149,9 +149,10 @@
             case 'tsx':
                 return 'typescript';
             case 'html':
-                return 'html';
             case 'svelte':
-                return 'html'; // Use HTML highlighting for Svelte
+                return 'html';
+            case 'php':
+                return 'php';
             case 'go':
                 return 'go';
             case 'py':
