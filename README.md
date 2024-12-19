@@ -1,4 +1,5 @@
-# Edit4I 🚀 (ed - di - tai)
+# Edit4I 🚀 (ed - di - tai)  [![Release Build](https://github.com/edit4i/editor/actions/workflows/editai-release.yaml/badge.svg)](https://github.com/edit4i/editor/actions/workflows/editai-release.yaml) [![GitHub Release](https://img.shields.io/github/v/release/edit4i/editor?include_prereleases)](https://github.com/edit4i/editor/releases)
+
 
 An AI-powered agentic editor that enhances your coding experience with intelligent context understanding and seamless workflow integration.
 An editor that increases your productivity by 4x (4x increase, get it? 😉).
@@ -36,6 +37,31 @@ EditAI combines these technologies to create a high-performance editor with nati
 - **Terminal Execution and Debugging** 💻: Built-in terminal support for running commands and debugging directly within the editor
 - **Pinned Prompts** 📌: AI convention-based system for consistent and customizable AI interactions
 
+## Screenshots
+
+**Recent projects**
+
+![screenshot-2024-12-08-21-14-58](https://github.com/user-attachments/assets/1f76ca89-22a5-4c74-afe6-a3e4dd91ef03)
+
+
+**Source control**
+
+![screenshot-2024-12-03-10-42-12](https://github.com/user-attachments/assets/75de0fac-547a-45d7-bdd1-e31843cefe26)
+
+**Command pallete**
+
+![screenshot-2024-12-03-10-40-10](https://github.com/user-attachments/assets/2d36dd1f-c0a9-4cd4-83a6-f5064c49a735)
+> With `Alt + J`, you can use "J" and "K" to move up and down. Yes, I'm a fellow vimmer 😎
+
+
+**Fuzzy finder**
+
+![screenshot-2024-12-03-11-27-56](https://github.com/user-attachments/assets/e18e7d38-aaf5-43e4-b5a9-6c1e932059eb)
+
+**Vim mode**
+![screenshot-2024-12-08-21-06-27](https://github.com/user-attachments/assets/57d1ccb9-a6e2-4e56-90e1-e28eae9382c7)
+
+
 ## Roadmap 🛣️
 
 MVP 1:
@@ -69,28 +95,74 @@ You can check the full roadmap [here](./ROADMAP.md).
 
 ## Development
 
-More details about installation and development setup coming soon.
+### Prerequisites
+
+- Go 1.22+
+- Node.js 22+
+- Docker (optional, for containerized builds)
+- Wails v2.9.2+
+- UPX (optional, for production builds)
+- NSIS (optional, for Windows builds)
+
+### Building from Source
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/EditAI.git
+   cd EditAI
+   ```
+
+2. **Local Build**
+   ```bash
+   # Install dependencies
+   make deps
+
+   # Development mode with hot reload
+   make dev
+
+   # Development build
+   make build-dev
+
+   # Production build
+   make build
+   ```
+
+3. **Docker Build** (⚠️ Coming Soon)
+   > Note: Docker builds are currently being reworked and are temporarily broken. Please use local builds for now.
+   ```bash
+   # Docker build (currently unavailable)
+   docker-compose up
+   ```
+
+### Editor Configuration
+
+Create a `.edit4i/config.yaml` file in your home directory to configure the editor.
+
+```yaml
+editor:
+  theme: "vs-dark"  # or "vs-light", "hc-black"
+  fontSize: 14
+  tabSize: 2
+  wordWrap: true
+  lineNumbers: true
+  minimap: true
+  vim:
+    enabled: true
+    defaultMode: "normal"  # "normal", "insert", "visual"
+
+```
+
+### Build Targets
+
+- Linux: `make build-linux`
+- macOS: `make build-darwin`
+- Windows: `make build-windows`
+
+For development and debugging, use `make build-dev` which enables hot reload.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.]
-
-## Screenshots
-
-**Source control**
-
-
-![screenshot-2024-12-03-10-42-12](https://github.com/user-attachments/assets/75de0fac-547a-45d7-bdd1-e31843cefe26)
-
-**Command pallete**
-
-![screenshot-2024-12-03-10-40-10](https://github.com/user-attachments/assets/2d36dd1f-c0a9-4cd4-83a6-f5064c49a735)
-> With `Alt + J`, you can use "J" and "K" to move up and down. Yes, I'm a fellow vimmer 😎
-
-
-**Fuzzy finder**
-
-![screenshot-2024-12-03-11-27-56](https://github.com/user-attachments/assets/e18e7d38-aaf5-43e4-b5a9-6c1e932059eb)
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 
 ## License
