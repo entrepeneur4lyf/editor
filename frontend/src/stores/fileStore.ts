@@ -278,42 +278,39 @@ function createFileStore() {
         },
 
         // Load directory contents
-        async loadDirectoryContents(path: string) {
+        async loadDirectoryContents(dirPath: string) {
+            update(state => ({ ...state, loading: true, error: null }));
             try {
-                const node = await LoadDirectoryContents(path);
-                
-                // Update the file tree with the new contents
-                update(state => {
-                    if (!state.fileTree) return state;
+                const updatedNode = await LoadDirectoryContents(dirPath);
+                if (!updatedNode) return;
 
-                    const updateNode = (nodes: FileNode[]): FileNode[] => {
-                        return nodes.map(n => {
-                            if (n.path === path) {
-                                return { ...n, ...node, isLoaded: true };
+                // Update the node in the file tree
+                update(state => {
+                    const updateNodeInTree = (nodes: FileNode[] | null): FileNode[] | null => {
+                        if (!nodes) return null;
+                        return nodes.map(node => {
+                            if (node.path === dirPath) {
+                                return { ...updatedNode, isLoaded: true };
                             }
-                            if (n.children) {
-                                const updatedChildren = updateNode(n.children);
-                                if (updatedChildren !== n.children) {
-                                    return { ...n, children: updatedChildren };
-                                }
+                            if (node.children) {
+                                return { ...node, children: updateNodeInTree(node.children) };
                             }
-                            return n;
+                            return node;
                         });
                     };
 
-                    const newTree = updateNode(state.fileTree);
-                    if (newTree === state.fileTree) return state;
-                    
                     return {
                         ...state,
-                        fileTree: newTree
+                        fileTree: updateNodeInTree(state.fileTree),
+                        loading: false
                     };
                 });
-
-                return node;
             } catch (err) {
-                console.error('Failed to load directory contents:', err);
-                return null;
+                update(state => ({
+                    ...state,
+                    error: err instanceof Error ? err.message : 'Failed to load directory contents',
+                    loading: false
+                }));
             }
         },
 
