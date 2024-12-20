@@ -224,7 +224,7 @@
                     item: {
                         name: $fileStore.currentProjectPath.split('/').pop() || '',
                         path: $fileStore.currentProjectPath,
-                        type: 'directory',
+                        type: '',
                         children: fileTree,
                         isLoaded: true
                     }

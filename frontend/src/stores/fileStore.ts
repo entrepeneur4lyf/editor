@@ -262,13 +262,25 @@ function createFileStore() {
             }
         },
 
-        // Rename file or directory
+        // Rename/Move file or directory
         async renameFile(oldPath: string, newPath: string): Promise<void> {
             try {
                 await RenameFile(oldPath, newPath);
+                // Get both parent directories
+                const oldParentPath = oldPath.substring(0, oldPath.lastIndexOf("/"));
+                const newParentPath = newPath.substring(0, newPath.lastIndexOf("/"));
+                
+                // Refresh both parent directories
+                await this.loadDirectoryContents(oldParentPath);
+                if (oldParentPath !== newParentPath) {
+                    await this.loadDirectoryContents(newParentPath);
+                }
+                
+                // Then refresh the entire tree to ensure consistency
                 await this.refreshFiles();
             } catch (error) {
-                update(state => ({ ...state, error: `Failed to rename: ${error}` }));
+                update(state => ({ ...state, error: `Failed to rename/move: ${error}` }));
+                throw error;
             }
         },
 
