@@ -25,6 +25,8 @@
         children: [],
     };
 
+    let tempNode: FileNode | null = null;
+
     function handleContextMenu(e: MouseEvent, item: FileNode) {
         e.preventDefault();
         contextMenu = {
@@ -43,7 +45,7 @@
         if (!contextMenu.targetItem) return;
 
         const path = contextMenu.targetItem.path;
-        const parentPath = path.substring(0, path.lastIndexOf("/"));
+        handleCloseContextMenu();
 
         switch (action) {
             case "rename":
@@ -69,28 +71,52 @@
                 }
                 break;
             case "newFile":
-                const fileName = prompt("Enter file name:");
-                if (fileName) {
-                    const newPath = `${path}/${fileName}`;
-                    await fileStore.createFile(newPath);
-                }
-                break;
             case "newFolder":
-                const folderName = prompt("Enter folder name:");
-                if (folderName) {
-                    const newPath = `${path}/${folderName}`;
-                    await fileStore.createDirectory(newPath);
+                const isFolder = action === "newFolder";
+                const newPath = `${path}/New ${isFolder ? "Folder" : "File"}`;
+                tempNode = {
+                    name: `New ${isFolder ? "Folder" : "File"}`,
+                    path: newPath,
+                    type: isFolder ? "directory" : "file",
+                    children: [],
+                    isRenaming: true,
+                };
+                if (!fileTree.some(item => item.path === tempNode.path)) {
+                    fileTree = [...fileTree, tempNode];
+                    // Wait for the DOM to update with the new node
+                    setTimeout(() => {
+                        const fileTreeItem = document.querySelector(
+                            `[data-path="${newPath}"]`
+                        );
+                        if (fileTreeItem) {
+                            fileTreeItem.dispatchEvent(
+                                new CustomEvent("startRename")
+                            );
+                        }
+                    }, 0);
                 }
                 break;
         }
-        handleCloseContextMenu();
     }
 
     async function handleRename(path: string, newName: string) {
         try {
             const parentPath = path.substring(0, path.lastIndexOf("/"));
             const newPath = `${parentPath}/${newName}`;
-            await fileStore.renameFile(path, newPath);
+            
+            if (path.includes("New File") || path.includes("New Folder")) {
+                // This is a new file/folder being created
+                const isFolder = path.includes("New Folder");
+                if (isFolder) {
+                    await fileStore.createDirectory(newPath);
+                } else {
+                    await fileStore.createFile(newPath);
+                }
+                tempNode = null;
+            } else {
+                // This is a rename operation
+                await fileStore.renameFile(path, newPath);
+            }
             await fileStore.refreshFiles();
         } catch (error) {
             console.error("Error renaming file:", error);
