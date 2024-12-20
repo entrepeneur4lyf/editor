@@ -5,8 +5,10 @@
     import type { service } from "@/lib/wailsjs/go/models";
     import { fileStore } from "@/stores/fileStore";
     import { LoadDirectoryContents } from "@/lib/wailsjs/go/main/App";
+    import { onMount } from "svelte";
 
     type FileNode = service.FileNode;
+    type FileTreeContextMenuEvent = CustomEvent<{ event: MouseEvent, item: FileNode }>;
 
     export let isAllCollapsed = false;
     export let key = 0; // Add key prop to force re-render
@@ -36,47 +38,36 @@
             }
         } else {
             // Add to the correct parent folder
-            fileTree = fileTree.map(item => {
-                if (item.path === parentPath) {
-                    return {
-                        ...item,
-                        children: [...(item.children || []), node],
-                        isLoaded: true
-                    };
-                } else if (item.children) {
-                    return {
-                        ...item,
-                        children: addToChildren(item.children, node, parentPath)
-                    };
-                }
-                return item;
-            });
+            const updateNode = (items: FileNode[]): FileNode[] => {
+                return items.map(item => {
+                    if (item.path === parentPath) {
+                        // Found the parent directory, add the new node to its children
+                        return {
+                            ...item,
+                            children: [...(item.children || []), node],
+                            isLoaded: true
+                        };
+                    } else if (item.type === "directory" && item.children) {
+                        // Keep searching in subdirectories
+                        const updatedChildren = updateNode(item.children);
+                        if (updatedChildren !== item.children) {
+                            return { ...item, children: updatedChildren };
+                        }
+                    }
+                    return item;
+                });
+            };
+
+            fileTree = updateNode(fileTree);
         }
     }
 
-    function addToChildren(children: FileNode[], node: FileNode, parentPath: string): FileNode[] {
-        return children.map(child => {
-            if (child.path === parentPath) {
-                return {
-                    ...child,
-                    children: [...(child.children || []), node],
-                    isLoaded: true
-                };
-            } else if (child.children) {
-                return {
-                    ...child,
-                    children: addToChildren(child.children, node, parentPath)
-                };
-            }
-            return child;
-        });
+    function removeNodeFromTree(items: FileNode[], path: string): FileNode[] {
+        return items.filter(item => item.path !== path);
     }
 
     async function handleContextMenuAction(action: string) {
         if (!contextMenu.targetItem) return;
-
-        const path = contextMenu.targetItem.path;
-        handleCloseContextMenu();
 
         switch (action) {
             case "rename":
@@ -98,13 +89,18 @@
                         `Are you sure you want to delete ${contextMenu.targetItem.name}?`,
                     )
                 ) {
-                    await fileStore.deleteFile(path);
+                    await fileStore.deleteFile(contextMenu.targetItem.path);
                 }
                 break;
             case "newFile":
             case "newFolder":
                 const isFolder = action === "newFolder";
-                const newPath = `${path}/New ${isFolder ? "Folder" : "File"}`;
+                const targetPath = contextMenu.targetItem.path;
+                const targetDir = contextMenu.targetItem.type === "directory" 
+                    ? targetPath 
+                    : targetPath.substring(0, targetPath.lastIndexOf("/"));
+                
+                const newPath = `${targetDir}/New ${isFolder ? "Folder" : "File"}`;
                 tempNode = {
                     name: `New ${isFolder ? "Folder" : "File"}`,
                     path: newPath,
@@ -112,9 +108,9 @@
                     children: [],
                     isRenaming: true,
                 };
-                
+
                 // Add the node to the correct parent in the tree
-                addNodeToTree(tempNode, path);
+                addNodeToTree(tempNode!, targetDir);
 
                 // Wait for the DOM to update with the new node
                 setTimeout(() => {
@@ -131,69 +127,67 @@
         }
     }
 
+    function handleContextMenu(e: FileTreeContextMenuEvent) {
+        const { event, item } = e.detail;
+        contextMenu = {
+            show: true,
+            x: event.clientX,
+            y: event.clientY,
+            targetItem: item
+        };
+    }
+
     async function handleRename(path: string, newName: string) {
         try {
             const parentPath = path.substring(0, path.lastIndexOf("/"));
             const newPath = `${parentPath}/${newName}`;
             
-            if (path.includes("New File") || path.includes("New Folder")) {
-                // This is a new file/folder being created
-                const isFolder = path.includes("New Folder");
-                if (isFolder) {
-                    await fileStore.createDirectory(newPath);
-                } else {
-                    await fileStore.createFile(newPath);
+            if (tempNode) {
+                let success = false;
+
+                try {
+                    if (tempNode.type === "directory") {
+                        await fileStore.createDirectory(newPath);
+                    } else {
+                        await fileStore.createFile(newPath);
+                    }
+                    success = true;
+                } catch (error) {
+                    console.error('Failed to create:', error);
+                    // Remove the temporary node on failure
+                    fileTree = removeNodeFromTree(fileTree, tempNode.path);
+                }
+
+                if (success) {
+                    // Refresh the parent directory to show the new item
+                    await fileStore.loadDirectoryContents(parentPath);
                 }
                 tempNode = null;
-
-                // Find and update the parent directory's contents
-                const parentNode = fileTree.find(node => node.path === parentPath) ||
-                    fileTree.find(node => {
-                        const findInChildren = (children: FileNode[]): FileNode | undefined => {
-                            for (const child of children) {
-                                if (child.path === parentPath) return child;
-                                if (child.children) {
-                                    const found = findInChildren(child.children);
-                                    if (found) return found;
-                                }
-                            }
-                            return undefined;
-                        };
-                        return node.children ? findInChildren(node.children) : undefined;
-                    });
-
-                if (parentNode) {
-                    await fileStore.loadDirectoryContents(parentNode.path);
-                } else {
-                    // If we can't find the parent node, refresh the entire tree
-                    await fileStore.refreshFiles();
-                }
             } else {
                 // This is a rename operation
                 await fileStore.renameFile(path, newPath);
-                await fileStore.refreshFiles();
             }
         } catch (error) {
-            console.error("Error renaming file:", error);
+            console.error("Failed to rename:", error);
         }
-    }
-
-    function handleContextMenu(e: MouseEvent, item: FileNode) {
-        e.preventDefault();
-        contextMenu = {
-            show: true,
-            x: e.clientX,
-            y: e.clientY,
-            targetItem: item,
-        };
     }
 
     function handleCloseContextMenu() {
         contextMenu.show = false;
     }
+
+    onMount(() => {
+        const root = document.querySelector('.filetree-root');
+        if (root) {
+            root.addEventListener('filetree:contextmenu', ((e: FileTreeContextMenuEvent) => {
+                e.stopPropagation();
+                handleContextMenu(e);
+            }) as EventListener);
+        }
+    });
 </script>
 
-<div class="h-full overflow-auto flex flex-col">
+<div class="h-full overflow-auto flex flex-col filetree-root">
     <div class="flex-shrink-0">
         {#if $fileStore.loading}
             <div class="p-4 text-sm text-gray-500">Loading files...</div>
@@ -203,7 +197,7 @@
             {#each fileTree as item (item.path)}
                 <FileTreeItem
                     {item}
-                    onContextMenu={(e) => handleContextMenu(e, item)}
+                    onContextMenu={handleContextMenu}
                     onRename={(path, newName) => handleRename(path, newName)}
                     {isAllCollapsed}
                 />

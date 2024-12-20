@@ -12,10 +12,11 @@
     import { LoadDirectoryContents } from '@/lib/wailsjs/go/main/App';
 
     type FileNode = service.FileNode;
+    type FileTreeContextMenuEvent = CustomEvent<{ event: MouseEvent, item: FileNode }>;
 
     export let item: FileNode;
     export let depth = 0;
-    export let onContextMenu: (e: MouseEvent, item: FileNode) => void;
+    export let onContextMenu: (e: FileTreeContextMenuEvent) => void;
     export let onRename: (path: string, newName: string) => void;
     export let isAllCollapsed = false;
 
@@ -130,8 +131,17 @@
 <div class="relative">
     <div
         class="flex items-center py-1 px-2 hover:bg-gray-800 cursor-pointer group rounded-sm mx-1 hover:rounded-md {isActive ? 'bg-gray-700' : ''}"
-        on:click={toggleFolder}
-        on:contextmenu|preventDefault={(e) => onContextMenu(e, item)}
+        on:click|stopPropagation={toggleFolder}
+        on:contextmenu|preventDefault|stopPropagation={(e) => {
+            // Only dispatch the custom event
+            const customEvent = new CustomEvent('filetree:contextmenu', {
+                detail: { event: e, item },
+                bubbles: true,
+                composed: true,
+                cancelable: true
+            });
+            e.target.dispatchEvent(customEvent);
+        }}
         on:startRename={startRename}
         on:keydown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
