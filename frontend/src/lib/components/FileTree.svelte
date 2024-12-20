@@ -89,7 +89,11 @@
                         `Are you sure you want to delete ${contextMenu.targetItem.name}?`,
                     )
                 ) {
-                    await fileStore.deleteFile(contextMenu.targetItem.path);
+                    try {
+                        await fileStore.deleteFile(contextMenu.targetItem.path);
+                    } catch (error) {
+                        console.error("Failed to delete:", error);
+                    }
                 }
                 break;
             case "newFile":
@@ -143,29 +147,32 @@
             const newPath = `${parentPath}/${newName}`;
             
             if (tempNode) {
-                let success = false;
-
                 try {
+                    // Create the file/directory without refreshing
                     if (tempNode.type === "directory") {
                         await fileStore.createDirectory(newPath);
                     } else {
                         await fileStore.createFile(newPath);
                     }
-                    success = true;
+
+                    // Remove temporary node
+                    fileTree = removeNodeFromTree(fileTree, tempNode.path);
+                    tempNode = null;
+
+                    // Now refresh to show the actual file
+                    await fileStore.loadDirectoryContents(parentPath);
+                    await fileStore.refreshFiles();
                 } catch (error) {
                     console.error('Failed to create:', error);
                     // Remove the temporary node on failure
                     fileTree = removeNodeFromTree(fileTree, tempNode.path);
+                    tempNode = null;
                 }
-
-                if (success) {
-                    // Refresh the parent directory to show the new item
-                    await fileStore.loadDirectoryContents(parentPath);
-                }
-                tempNode = null;
             } else {
                 // This is a rename operation
                 await fileStore.renameFile(path, newPath);
+                // Full refresh after rename
+                await fileStore.refreshFiles();
             }
         } catch (error) {
             console.error("Failed to rename:", error);
@@ -210,12 +217,23 @@
     <div
         class="flex-grow min-h-[20px]"
         on:contextmenu|preventDefault={(e) => {
-            contextMenu = {
-                show: true,
-                x: e.clientX,
-                y: e.clientY,
-                targetItem: currentProjectRootNode,
-            };
+            // For empty space, create a synthetic event with the root directory
+            const customEvent = new CustomEvent('filetree:contextmenu', {
+                detail: {
+                    event: e,
+                    item: {
+                        name: $fileStore.currentProjectPath.split('/').pop() || '',
+                        path: $fileStore.currentProjectPath,
+                        type: 'directory',
+                        children: fileTree,
+                        isLoaded: true
+                    }
+                },
+                bubbles: true,
+                composed: true,
+                cancelable: true
+            });
+            e.target.dispatchEvent(customEvent);
         }}
     />
 

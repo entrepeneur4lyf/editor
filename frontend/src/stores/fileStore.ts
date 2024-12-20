@@ -116,6 +116,7 @@ function createFileStore() {
                     error: err instanceof Error ? err.message : 'Failed to load project files',
                     loading: false
                 }));
+                throw err;
             }
         },
 
@@ -169,7 +170,11 @@ function createFileStore() {
 
         // Refresh files
         async refreshFiles() {
-            return this.loadProjectFiles();
+            const state = get({ subscribe });
+            if (!state.currentProjectPath) return;
+            
+            // Force a complete refresh of the project
+            await this.loadProjectFiles(state.currentProjectPath);
         },
 
         // Set active file
@@ -241,9 +246,9 @@ function createFileStore() {
         async createFile(path: string): Promise<void> {
             try {
                 await CreateFile(path);
-                await this.refreshFiles();
             } catch (error) {
                 update(state => ({ ...state, error: `Failed to create file: ${error}` }));
+                throw error;
             }
         },
 
@@ -251,9 +256,9 @@ function createFileStore() {
         async createDirectory(path: string): Promise<void> {
             try {
                 await CreateDirectory(path);
-                await this.refreshFiles();
             } catch (error) {
                 update(state => ({ ...state, error: `Failed to create directory: ${error}` }));
+                throw error;
             }
         },
 
@@ -271,9 +276,17 @@ function createFileStore() {
         async deleteFile(path: string): Promise<void> {
             try {
                 await DeleteFile(path);
-                await this.refreshFiles();
+                // After deletion, get the parent directory path
+                const parentPath = path.substring(0, path.lastIndexOf("/"));
+                
+                // First refresh the parent directory
+                await this.loadDirectoryContents(parentPath);
+                
+                // Then refresh the entire tree to ensure consistency
+                await this.loadProjectFiles();
             } catch (error) {
                 update(state => ({ ...state, error: `Failed to delete: ${error}` }));
+                throw error; // Re-throw to allow handling in the UI
             }
         },
 
@@ -292,16 +305,20 @@ function createFileStore() {
                             if (node.path === dirPath) {
                                 return { ...updatedNode, isLoaded: true };
                             }
-                            if (node.children) {
-                                return { ...node, children: updateNodeInTree(node.children) };
+                            if (node.type === "directory" && node.children) {
+                                const updatedChildren = updateNodeInTree(node.children);
+                                if (updatedChildren !== node.children) {
+                                    return { ...node, children: updatedChildren };
+                                }
                             }
                             return node;
                         });
                     };
 
+                    const updatedTree = updateNodeInTree(state.fileTree);
                     return {
                         ...state,
-                        fileTree: updateNodeInTree(state.fileTree),
+                        fileTree: updatedTree,
                         loading: false
                     };
                 });
@@ -311,6 +328,7 @@ function createFileStore() {
                     error: err instanceof Error ? err.message : 'Failed to load directory contents',
                     loading: false
                 }));
+                throw err; // Re-throw to allow handling in the UI
             }
         },
 
