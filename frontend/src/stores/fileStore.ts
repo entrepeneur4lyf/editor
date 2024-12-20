@@ -284,23 +284,30 @@ function createFileStore() {
                 
                 // Update the file tree with the new contents
                 update(state => {
-                    const updateNode = (nodes: FileNode[]) => {
-                        for (let i = 0; i < nodes.length; i++) {
-                            if (nodes[i].path === path) {
-                                nodes[i] = { ...nodes[i], ...node, isLoaded: true };
-                                return true;
+                    if (!state.fileTree) return state;
+
+                    const updateNode = (nodes: FileNode[]): FileNode[] => {
+                        return nodes.map(n => {
+                            if (n.path === path) {
+                                return { ...n, ...node, isLoaded: true };
                             }
-                            if (nodes[i].children && updateNode(nodes[i].children)) {
-                                return true;
+                            if (n.children) {
+                                const updatedChildren = updateNode(n.children);
+                                if (updatedChildren !== n.children) {
+                                    return { ...n, children: updatedChildren };
+                                }
                             }
-                        }
-                        return false;
+                            return n;
+                        });
                     };
 
-                    if (state.fileTree) {
-                        updateNode(state.fileTree);
-                    }
-                    return state;
+                    const newTree = updateNode(state.fileTree);
+                    if (newTree === state.fileTree) return state;
+                    
+                    return {
+                        ...state,
+                        fileTree: newTree
+                    };
                 });
 
                 return node;

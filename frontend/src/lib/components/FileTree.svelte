@@ -4,10 +4,10 @@
     import ContextMenu from "@/lib/editor/ContextMenu.svelte";
     import type { service } from "@/lib/wailsjs/go/models";
     import { fileStore } from "@/stores/fileStore";
+    import { LoadDirectoryContents } from "@/lib/wailsjs/go/main/App";
 
     type FileNode = service.FileNode;
 
-    export let fileTree: FileNode[] = [];
     export let isAllCollapsed = false;
     export let key = 0; // Add key prop to force re-render
 
@@ -26,19 +26,50 @@
     };
 
     let tempNode: FileNode | null = null;
+    $: fileTree = $fileStore.fileTree || [];
 
-    function handleContextMenu(e: MouseEvent, item: FileNode) {
-        e.preventDefault();
-        contextMenu = {
-            show: true,
-            x: e.clientX,
-            y: e.clientY,
-            targetItem: item,
-        };
+    function addNodeToTree(node: FileNode, parentPath: string) {
+        if (!parentPath || parentPath === $fileStore.currentProjectPath) {
+            // Add to root level
+            if (!fileTree.some(item => item.path === node.path)) {
+                fileTree = [...fileTree, node];
+            }
+        } else {
+            // Add to the correct parent folder
+            fileTree = fileTree.map(item => {
+                if (item.path === parentPath) {
+                    return {
+                        ...item,
+                        children: [...(item.children || []), node],
+                        isLoaded: true
+                    };
+                } else if (item.children) {
+                    return {
+                        ...item,
+                        children: addToChildren(item.children, node, parentPath)
+                    };
+                }
+                return item;
+            });
+        }
     }
 
-    function handleCloseContextMenu() {
-        contextMenu.show = false;
+    function addToChildren(children: FileNode[], node: FileNode, parentPath: string): FileNode[] {
+        return children.map(child => {
+            if (child.path === parentPath) {
+                return {
+                    ...child,
+                    children: [...(child.children || []), node],
+                    isLoaded: true
+                };
+            } else if (child.children) {
+                return {
+                    ...child,
+                    children: addToChildren(child.children, node, parentPath)
+                };
+            }
+            return child;
+        });
     }
 
     async function handleContextMenuAction(action: string) {
@@ -81,20 +112,21 @@
                     children: [],
                     isRenaming: true,
                 };
-                if (!fileTree.some(item => item.path === tempNode.path)) {
-                    fileTree = [...fileTree, tempNode];
-                    // Wait for the DOM to update with the new node
-                    setTimeout(() => {
-                        const fileTreeItem = document.querySelector(
-                            `[data-path="${newPath}"]`
+                
+                // Add the node to the correct parent in the tree
+                addNodeToTree(tempNode, path);
+
+                // Wait for the DOM to update with the new node
+                setTimeout(() => {
+                    const fileTreeItem = document.querySelector(
+                        `[data-path="${newPath}"]`
+                    );
+                    if (fileTreeItem) {
+                        fileTreeItem.dispatchEvent(
+                            new CustomEvent("startRename")
                         );
-                        if (fileTreeItem) {
-                            fileTreeItem.dispatchEvent(
-                                new CustomEvent("startRename")
-                            );
-                        }
-                    }, 0);
-                }
+                    }
+                }, 0);
                 break;
         }
     }
@@ -113,14 +145,51 @@
                     await fileStore.createFile(newPath);
                 }
                 tempNode = null;
+
+                // Find and update the parent directory's contents
+                const parentNode = fileTree.find(node => node.path === parentPath) ||
+                    fileTree.find(node => {
+                        const findInChildren = (children: FileNode[]): FileNode | undefined => {
+                            for (const child of children) {
+                                if (child.path === parentPath) return child;
+                                if (child.children) {
+                                    const found = findInChildren(child.children);
+                                    if (found) return found;
+                                }
+                            }
+                            return undefined;
+                        };
+                        return node.children ? findInChildren(node.children) : undefined;
+                    });
+
+                if (parentNode) {
+                    await fileStore.loadDirectoryContents(parentNode.path);
+                } else {
+                    // If we can't find the parent node, refresh the entire tree
+                    await fileStore.refreshFiles();
+                }
             } else {
                 // This is a rename operation
                 await fileStore.renameFile(path, newPath);
+                await fileStore.refreshFiles();
             }
-            await fileStore.refreshFiles();
         } catch (error) {
             console.error("Error renaming file:", error);
         }
+    }
+
+    function handleContextMenu(e: MouseEvent, item: FileNode) {
+        e.preventDefault();
+        contextMenu = {
+            show: true,
+            x: e.clientX,
+            y: e.clientY,
+            targetItem: item,
+        };
+    }
+
+    function handleCloseContextMenu() {
+        contextMenu.show = false;
     }
 </script>
 
