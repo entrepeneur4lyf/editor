@@ -55,6 +55,14 @@
 
     function handleContextMenu(event: CustomEvent<{ detail: { event: MouseEvent, commit: service.CommitInfo } }>) {
         const { commit, event: mouseEvent } = event.detail.detail;
+        
+        // If menu is already shown, close it first
+        if (contextMenu.show) {
+            contextMenu.show = false;
+            return;
+        }
+
+        // Show new menu
         contextMenu = {
             show: true,
             x: mouseEvent.clientX,
