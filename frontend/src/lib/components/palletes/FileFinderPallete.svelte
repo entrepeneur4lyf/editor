@@ -6,13 +6,13 @@
         onDestroy,
     } from "svelte";
     import { Search, File, Folder } from "lucide-svelte";
-    import Input from "./Input.svelte";
+    import Input from "../Input.svelte";
     import { setKeyboardContext, addKeyboardContext, removeKeyboardContext, keyBindings, registerCommand } from "@/stores/keyboardStore";
     import { SearchFiles } from "@/lib/wailsjs/go/main/App";
     import { projectStore } from "@/stores/project";
     import { fileStore } from "@/stores/fileStore";
     import { focusStore } from "@/stores/focusStore";
-    import type { service } from "../wailsjs/go/models";
+    import type { service } from "../../wailsjs/go/models";
 
     const dispatch = createEventDispatcher<{
         close: void;

@@ -12,7 +12,7 @@
     import { registerCommand, setKeyboardContext } from '@/stores/keyboardStore';
     import { get } from 'svelte/store';
     import Editor from "@/lib/editor/Editor.svelte";
-    import FileFinder from "@/lib/components/FileFinder.svelte";
+    import FileFinder from "@/lib/components/palletes/FileFinderPallete.svelte";
     import Modal from "@/lib/components/Modal.svelte";
     import BottomPane from "@/lib/editor/panes/BottomPane.svelte";
     import { bottomPaneStore } from '@/stores/bottomPaneStore';

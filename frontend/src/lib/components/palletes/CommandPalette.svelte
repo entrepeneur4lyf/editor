@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount, createEventDispatcher, afterUpdate, onDestroy } from 'svelte';
     import { Search } from 'lucide-svelte';
-    import Input from './Input.svelte';
+    import Input from '../Input.svelte';
     import { fuzzySearch } from '@/lib/utils/fuzzySearch';
     import { commandStore, type Command } from '@/stores/commandStore';
     import { keyBindings, formatKeybinding, addKeyboardContext, removeKeyboardContext, type KeyBinding } from '@/stores/keyboardStore';

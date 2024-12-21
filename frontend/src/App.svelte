@@ -5,7 +5,7 @@
   import Welcome from "@/routes/Welcome.svelte";
   import Editor from "@/routes/Editor.svelte";
   import Configs from "@/routes/Configs.svelte";
-  import CommandPalette from "@/lib/components/CommandPalette.svelte";
+  import CommandPalette from "@/lib/components/palletes/CommandPalette.svelte";
   import KeyboardManager from "@/lib/components/KeyboardManager.svelte";
   import { registerCommand } from "./stores/keyboardStore";
 
