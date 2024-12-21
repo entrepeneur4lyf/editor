@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 
 	"github.com/go-git/go-git/v5"
@@ -39,4 +40,31 @@ func (s *GitService) IsGitRepository(projectPath string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// InitRepository initializes a new Git repository in the given directory
+// Returns error if the directory is already a Git repository or if initialization fails
+func (s *GitService) InitRepository(projectPath string) error {
+	// First check if it's already a Git repository
+	isRepo, err := s.IsGitRepository(projectPath)
+	if err != nil {
+		return fmt.Errorf("failed to check if directory is a Git repository: %w", err)
+	}
+	if isRepo {
+		return errors.New("directory is already a Git repository")
+	}
+
+	// Ensure we have an absolute path
+	absPath, err := filepath.Abs(projectPath)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	// Initialize the repository
+	_, err = git.PlainInit(absPath, false) // false means not bare repository
+	if err != nil {
+		return fmt.Errorf("failed to initialize Git repository: %w", err)
+	}
+
+	return nil
 }

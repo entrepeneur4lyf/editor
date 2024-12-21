@@ -1,54 +1,99 @@
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
+import { IsGitRepository, InitGitRepository } from '@/lib/wailsjs/go/main/App';
+import { fileStore } from '@/stores/fileStore';
 
-export type GitStatus = 'modified' | 'new' | 'deleted';
 
-export interface GitStatusItem {
+export interface GitStatus {
     file: string;
-    status: GitStatus;
+    status: 'modified' | 'new' | 'deleted';
     staged: boolean;
 }
 
 interface GitState {
-    gitStatus: GitStatusItem[];
+    gitStatus: GitStatus[];
     stagedExpanded: boolean;
     changesExpanded: boolean;
+    isRepository: boolean;
+    isLoading: boolean;
+    error: string | null;
 }
 
 function createGitStore() {
     const { subscribe, set, update } = writable<GitState>({
         gitStatus: [],
         stagedExpanded: true,
-        changesExpanded: true
+        changesExpanded: true,
+        isRepository: false,
+        isLoading: true,
+        error: null
     });
 
     return {
         subscribe,
         
-        toggleStaged: () => update(state => ({
+        async checkRepository() {
+            try {
+                const projectPath = get(fileStore).currentProjectPath;
+                if (!projectPath) {
+                    return;
+                }
+
+                update(state => ({ ...state, isLoading: true, error: null }));
+                const isRepo = await IsGitRepository(projectPath);
+                update(state => ({ ...state, isRepository: isRepo, isLoading: false }));
+            } catch (error) {
+                update(state => ({ 
+                    ...state, 
+                    isLoading: false, 
+                    error: `Failed to check repository status: ${error.message}` 
+                }));
+            }
+        },
+
+        async initRepository() {
+            try {
+                const projectPath = get(fileStore).currentProjectPath;
+                if (!projectPath) {
+                    return;
+                }
+
+                update(state => ({ ...state, isLoading: true, error: null }));
+                await InitGitRepository(projectPath);
+                update(state => ({ ...state, isRepository: true, isLoading: false }));
+            } catch (error) {
+                update(state => ({ 
+                    ...state, 
+                    isLoading: false, 
+                    error: `Failed to initialize repository: ${error.message}` 
+                }));
+            }
+        },
+
+        toggleStagedExpanded: () => update(state => ({
             ...state,
             stagedExpanded: !state.stagedExpanded
         })),
 
-        toggleChanges: () => update(state => ({
+        toggleChangesExpanded: () => update(state => ({
             ...state,
             changesExpanded: !state.changesExpanded
         })),
 
-        setGitStatus: (status: GitStatusItem[]) => update(state => ({
+        setGitStatus: (status: GitStatus[]) => update(state => ({
             ...state,
             gitStatus: status
         })),
 
         stageFile: (file: string) => update(state => ({
             ...state,
-            gitStatus: state.gitStatus.map(item => 
+            gitStatus: state.gitStatus.map(item =>
                 item.file === file ? { ...item, staged: true } : item
             )
         })),
 
         unstageFile: (file: string) => update(state => ({
             ...state,
-            gitStatus: state.gitStatus.map(item => 
+            gitStatus: state.gitStatus.map(item =>
                 item.file === file ? { ...item, staged: false } : item
             )
         })),
@@ -61,7 +106,10 @@ function createGitStore() {
         reset: () => set({
             gitStatus: [],
             stagedExpanded: true,
-            changesExpanded: true
+            changesExpanded: true,
+            isRepository: false,
+            isLoading: false,
+            error: null
         })
     };
 }

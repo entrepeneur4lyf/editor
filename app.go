@@ -179,3 +179,8 @@ func (a *App) GetAvailableShells() ([]string, error) {
 func (a *App) IsGitRepository(projectPath string) (bool, error) {
 	return a.git.IsGitRepository(projectPath)
 }
+
+// InitGitRepository initializes a new Git repository in the given directory
+func (a *App) InitGitRepository(projectPath string) error {
+	return a.git.InitRepository(projectPath)
+}

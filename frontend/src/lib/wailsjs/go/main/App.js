@@ -54,6 +54,10 @@ export function HandleInput(arg1, arg2) {
   return window['go']['main']['App']['HandleInput'](arg1, arg2);
 }
 
+export function InitGitRepository(arg1) {
+  return window['go']['main']['App']['InitGitRepository'](arg1);
+}
+
 export function IsGitRepository(arg1) {
   return window['go']['main']['App']['IsGitRepository'](arg1);
 }
