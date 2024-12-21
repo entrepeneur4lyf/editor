@@ -261,3 +261,19 @@ func (s *GitService) DiscardChanges(projectPath string, file string) error {
 
 	return nil
 }
+
+// Commit creates a new commit with the staged changes
+func (s *GitService) Commit(projectPath string, message string) error {
+	worktree, err := s.getWorktree(projectPath)
+	if err != nil {
+		return err
+	}
+
+	// Create the commit
+	_, err = worktree.Commit(message, &git.CommitOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create commit: %w", err)
+	}
+
+	return nil
+}

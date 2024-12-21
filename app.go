@@ -204,3 +204,8 @@ func (a *App) UnstageFile(projectPath string, file string) error {
 func (a *App) DiscardChanges(projectPath string, file string) error {
 	return a.git.DiscardChanges(projectPath, file)
 }
+
+// Commit creates a new commit with the staged changes
+func (a *App) Commit(projectPath string, message string) error {
+	return a.git.Commit(projectPath, message)
+}
