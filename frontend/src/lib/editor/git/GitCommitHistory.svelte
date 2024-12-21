@@ -1,14 +1,24 @@
 <script lang="ts">
-    import { ChevronDown, ChevronRight, GitCommit, Loader } from "lucide-svelte";
+    import { ChevronDown, ChevronRight, Loader, Eye, Edit, GitBranch, RotateCcw, GitFork, ArrowDownToLine, ArrowDown } from "lucide-svelte";
     import { gitStore } from "@/stores/gitStore";
     import { onMount } from "svelte";
     import ResizeHandle from "../ResizeHandle.svelte";
-    import { formatRelativeTime } from "@/lib/utils/time";
+    import GitCommitItem from "./GitCommitItem.svelte";
+    import ContextMenu from "@/lib/editor/ContextMenu.svelte";
+    import type { service } from "@/lib/wailsjs/go/models";
 
     export let expanded = false;
     let historyHeight = 240; // Default height
     let loadingMore = false;
     let scrollContainer: HTMLDivElement;
+
+    // Context menu state
+    let contextMenu = {
+        show: false,
+        x: 0,
+        y: 0,
+        commit: null as service.CommitInfo | null
+    };
 
     // Load initial commits
     onMount(async () => {
@@ -42,9 +52,53 @@
             loadMoreCommits();
         }
     }
+
+    function handleContextMenu(event: CustomEvent<{ detail: { event: MouseEvent, commit: service.CommitInfo } }>) {
+        const { commit, event: mouseEvent } = event.detail.detail;
+        contextMenu = {
+            show: true,
+            x: mouseEvent.clientX,
+            y: mouseEvent.clientY,
+            commit
+        };
+    }
+
+    function handleContextMenuAction(action: string) {
+        if (!contextMenu.commit) return;
+
+        const commit = contextMenu.commit;
+        switch (action) {
+            case 'view':
+                console.log('View commit:', commit.hash);
+                break;
+            case 'edit':
+                console.log('Edit message:', commit.hash);
+                break;
+            case 'amend':
+                console.log('Amend staged:', commit.hash);
+                break;
+            case 'checkout':
+                console.log('Checkout commit:', commit.hash);
+                break;
+            case 'branch':
+                console.log('Create branch from:', commit.hash);
+                break;
+            case 'hard-reset':
+                console.log('Hard reset to:', commit.hash);
+                break;
+            case 'soft-reset':
+                console.log('Soft reset to:', commit.hash);
+                break;
+        }
+        contextMenu.show = false;
+    }
+
+    function handleCloseContextMenu() {
+        contextMenu.show = false;
+    }
 </script>
 
-<div class="relative">
+<div>
     <div class="border-t border-gray-800">
         {#if expanded}
             <ResizeHandle 
@@ -82,21 +136,10 @@
                         </div>
                     {:else if $gitStore.commits && $gitStore.commits.length > 0}
                         {#each $gitStore.commits as commit}
-                            <div class="flex items-start p-2 text-sm hover:bg-gray-800/50 group">
-                                <GitCommit class="w-4 h-4 text-gray-500 mt-1 flex-shrink-0" />
-                                <div class="ml-2 flex-1 min-w-0">
-                                    <div class="flex items-center justify-between">
-                                        <span class="font-mono text-xs text-gray-500">{commit.hash.substring(0, 7)}</span>
-                                        <span class="text-xs text-gray-500">{formatRelativeTime(commit.date)}</span>
-                                    </div>
-                                    <p class="text-gray-300 truncate" title={commit.message}>
-                                        {commit.message}
-                                    </p>
-                                    <p class="text-xs text-gray-500 truncate">
-                                        {commit.author}
-                                    </p>
-                                </div>
-                            </div>
+                            <GitCommitItem 
+                                {commit} 
+                                on:contextmenu={handleContextMenu} 
+                            />
                         {/each}
                         {#if loadingMore}
                             <div class="flex items-center justify-center py-2 text-sm text-gray-500">
@@ -119,4 +162,51 @@
             </div>
         {/if}
     </div>
+
+    {#if contextMenu.show}
+        <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={[
+                {
+                    label: "View Commit",
+                    icon: Eye,
+                    action: () => handleContextMenuAction("view")
+                },
+                {
+                    label: "Edit Message",
+                    icon: Edit,
+                    action: () => handleContextMenuAction("edit")
+                },
+                {
+                    label: "Amend Staged",
+                    icon: GitFork,
+                    action: () => handleContextMenuAction("amend"),
+                    divider: true,
+                },
+                {
+                    label: "Checkout Commit",
+                    icon: ArrowDownToLine,
+                    action: () => handleContextMenuAction("checkout")
+                },
+                {
+                    label: "Create Branch",
+                    icon: GitBranch,
+                    action: () => handleContextMenuAction("branch"),
+                    divider: true,
+                },
+                {
+                    label: "Hard Reset to This Commit",
+                    icon: RotateCcw,
+                    action: () => handleContextMenuAction("hard-reset")
+                },
+                {
+                    label: "Soft Reset to This Commit",
+                    icon: ArrowDown,
+                    action: () => handleContextMenuAction("soft-reset")
+                }
+            ]}
+            onClose={handleCloseContextMenu}
+        />
+    {/if}
 </div>
