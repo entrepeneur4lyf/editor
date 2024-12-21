@@ -5,15 +5,16 @@
         afterUpdate,
         onDestroy,
     } from "svelte";
+    import { Search } from "lucide-svelte";
     import BasePalette from './components/BasePalette.svelte';
     import ResultsList from './components/ResultsList.svelte';
     import FileItem from './components/FileItem.svelte';
-    import { setKeyboardContext, addKeyboardContext, removeKeyboardContext, keyBindings, registerCommand } from "@/stores/keyboardStore";
     import { SearchFiles } from "@/lib/wailsjs/go/main/App";
     import { projectStore } from "@/stores/project";
     import { fileStore } from "@/stores/fileStore";
     import { focusStore } from "@/stores/focusStore";
-    import type { service } from "../../wailsjs/go/models";
+    import { keyBindings, addKeyboardContext, removeKeyboardContext, registerCommand } from "@/stores/keyboardStore";
+    import type { service } from "../wailsjs/go/models";
 
     const dispatch = createEventDispatcher<{
         close: void;
@@ -175,44 +176,90 @@
         }
     }
 
-    function handleKeyDown(event: KeyboardEvent) {
-        switch (event.key) {
+    function handleKeyDown(event: CustomEvent<KeyboardEvent>) {
+        const keyboardEvent = event.detail;
+        if (!show) return;
+
+        // Enable vim mode when Alt+J are pressed together
+        if (keyboardEvent.altKey && keyboardEvent.key.toLowerCase() === "j") {
+            vimModeEnabled = !vimModeEnabled;
+            keyboardEvent.preventDefault();
+            return;
+        }
+
+        // Close modal on Alt + Number
+        if (keyboardEvent.altKey && /^[0-9]$/.test(keyboardEvent.key)) {
+            keyboardEvent.preventDefault();
+            dispatch("close");
+            return;
+        }
+        
+        switch (keyboardEvent.key) {
             case "ArrowDown":
             case "j":
-                if (event.key === "j" && !vimModeEnabled) break;
-                event.preventDefault();
+                if (keyboardEvent.key === "j" && !vimModeEnabled) break;
+                keyboardEvent.preventDefault();
                 selectedIndex = (selectedIndex + 1) % results.length;
                 break;
             case "ArrowUp":
             case "k":
-                if (event.key === "k" && !vimModeEnabled) break;
-                event.preventDefault();
-                selectedIndex = selectedIndex - 1 < 0 
-                    ? results.length - 1 
-                    : selectedIndex - 1;
+                if (keyboardEvent.key === "k" && !vimModeEnabled) break;
+                keyboardEvent.preventDefault();
+                selectedIndex =
+                    selectedIndex - 1 < 0
+                        ? results.length - 1
+                        : selectedIndex - 1;
                 break;
             case "Enter":
-                event.preventDefault();
+                keyboardEvent.preventDefault();
                 if (results[selectedIndex]) {
                     handleSelect(results[selectedIndex]);
                 }
                 break;
+            case "Escape":
+                keyboardEvent.preventDefault();
+                closeFileFinder();
+                break;
         }
     }
 
-    function handleSelect(file: service.FileNode) {
-        dispatch("select", { path: file.path });
+    async function handleSelect(file: service.FileNode & { isOpen: boolean }) {
+        if (file.type === "file") {
+            await fileStore.openFile(file.path);
+            closeFileFinder();
+            dispatch('select', { path: file.path });
+        }
+    }
+
+    function closeFileFinder() {
+        resetState();
+        searchQuery = "";
+        vimModeEnabled = false;
+        selectedIndex = 0;
         show = false;
+        focusStore.restorePrevious();
+        dispatch("close");
     }
 
     onMount(() => {
         mounted = true;
+        addKeyboardContext('fileFinder');
+
+        // Register actions for fuzzy finder selection commands
+        for (let i = 1; i <= 9; i++) {
+            registerCommand(`fuzzyFinderSelect${i}`, () => {
+                const index = i - 1;
+                if (results[index]) {
+                    handleSelect(results[index]);
+                }
+            });
+        }
     });
 
     onDestroy(() => {
-        if (debounceTimer) {
-            clearTimeout(debounceTimer);
-        }
+        removeKeyboardContext('fileFinder');
+        mounted = false;
+        resetState();
     });
 </script>
 
@@ -220,29 +267,24 @@
     bind:show
     bind:searchQuery
     paletteId={finderId}
-    placeholder="Search files..."
+    placeholder="Type to search files..."
     on:keydown={handleKeyDown}
-    on:close
-    on:search={() => {}}
+    on:close={closeFileFinder}
 >
-    {#if loading}
-        <div class="px-4 py-8 text-center text-gray-500">
-            Searching...
-        </div>
-    {:else if error}
-        <div class="px-4 py-8 text-center text-red-500">
-            {error}
-        </div>
-    {:else if results.length === 0}
-        <div class="px-4 py-8 text-center text-gray-500">
-            No files found
-        </div>
-    {:else}
-        <ResultsList
-            results={results}
-            {selectedIndex}
-            ItemComponent={FileItem}
-            on:select={({ detail }) => handleSelect(detail)}
-        />
-    {/if}
+    <ResultsList 
+        {selectedIndex} 
+        isEmpty={loading || error || results.length === 0}
+        emptyMessage={loading ? "Loading..." : error ? error : "No files found"}
+    >
+        {#if !loading}
+            {#each results as file, index (file.path)}
+                <FileItem
+                    {file}
+                    {index}
+                    selected={index === selectedIndex}
+                    onClick={() => handleSelect(file)}
+                />
+            {/each}
+        {/if}
+    </ResultsList>
 </BasePalette>
