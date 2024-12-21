@@ -29,6 +29,8 @@ export function Greet(arg1:string):Promise<string>;
 
 export function HandleInput(arg1:string,arg2:Array<number>):Promise<void>;
 
+export function IsGitRepository(arg1:string):Promise<boolean>;
+
 export function LoadDirectoryContents(arg1:string):Promise<service.FileNode>;
 
 export function OpenConfigFile():Promise<string>;

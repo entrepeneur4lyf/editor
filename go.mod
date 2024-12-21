@@ -7,6 +7,7 @@ toolchain go1.23.0
 require (
 	github.com/amacneil/dbmate/v2 v2.23.0
 	github.com/creack/pty v1.1.24
+	github.com/go-git/go-git/v5 v5.12.0
 	github.com/joho/godotenv v1.5.1
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
@@ -27,7 +28,6 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
-	github.com/go-git/go-git/v5 v5.12.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect

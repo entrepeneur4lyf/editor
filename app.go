@@ -18,6 +18,7 @@ type App struct {
 	files           *service.FileService
 	config          *service.ConfigService
 	terminalService *service.TerminalService
+	git             *service.GitService
 }
 
 // NewApp creates a new App application struct
@@ -39,6 +40,7 @@ func (a *App) startup(ctx context.Context) {
 	// Initialize services
 	a.projects = service.NewProjectsService(dbConn)
 	a.files = service.NewFileService()
+	a.git = service.NewGitService()
 
 	config, err := service.NewConfigService()
 	if err != nil {
@@ -171,4 +173,9 @@ func (a *App) HandleInput(id string, data []byte) error {
 // GetAvailableShells returns a list of available shells, with the default shell as the first item
 func (a *App) GetAvailableShells() ([]string, error) {
     return a.terminalService.GetAvailableShells()
+}
+
+// IsGitRepository checks if the given directory is a Git repository
+func (a *App) IsGitRepository(projectPath string) (bool, error) {
+	return a.git.IsGitRepository(projectPath)
 }
