@@ -1,11 +1,15 @@
 <script lang="ts">
     import { File, Loader, Plus, Undo, Trash2 } from "lucide-svelte";
     import Button from "@/lib/components/Button.svelte";
+    import Modal from "@/lib/components/Modal.svelte";
     import { gitStore } from "@/stores/gitStore";
     import type { service } from "@/lib/wailsjs/go/models";
 
     export let item: service.FileStatus;
     export let isStaged: boolean;
+
+    let showDiscardModal = false;
+    let fileToDiscard: string | null = null;
 
     // Status color mapping
     const getStatusColor = (status: string) => {
@@ -28,6 +32,24 @@
                 return "text-gray-500";
         }
     };
+
+    function handleDiscardClick(file: string) {
+        fileToDiscard = file;
+        showDiscardModal = true;
+    }
+
+    async function handleDiscardConfirm() {
+        if (fileToDiscard) {
+            await gitStore.discardChanges(fileToDiscard);
+            showDiscardModal = false;
+            fileToDiscard = null;
+        }
+    }
+
+    function handleDiscardCancel() {
+        showDiscardModal = false;
+        fileToDiscard = null;
+    }
 </script>
 
 <div class="flex items-center text-sm py-1 group hover:bg-gray-800 rounded-sm mx-1 hover:rounded-md">
@@ -64,7 +86,7 @@
                     size="sm"
                     icon={Trash2}
                     title="Discard Changes"
-                    on:click={() => gitStore.discardChanges(item.file)}
+                    on:click={() => handleDiscardClick(item.file)}
                     disabled={$gitStore.loadingFiles.has(item.file)}
                 />
             {/if}
@@ -78,3 +100,17 @@
         </span>
     </div>
 </div>
+
+<Modal
+    show={showDiscardModal}
+    title="Discard Changes"
+    confirmText="Discard"
+    confirmButtonClass="bg-red-600 hover:bg-red-700"
+    on:close={handleDiscardCancel}
+    on:confirm={handleDiscardConfirm}
+>
+    <div class="p-4">
+        <p>Are you sure you want to discard changes in <span class="font-mono text-gray-300">{fileToDiscard}</span>?</p>
+        <p class="mt-2 text-gray-400">This action cannot be undone.</p>
+    </div>
+</Modal>
