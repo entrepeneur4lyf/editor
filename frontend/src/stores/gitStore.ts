@@ -116,7 +116,7 @@ function createGitStore() {
             gitStatus: status
         })),
 
-        async stageFile(file: string) {
+        async stageFile(file: string): Promise<void> {
             try {
                 const projectPath = get(fileStore).currentProjectPath;
                 if (!projectPath) {
@@ -129,15 +129,21 @@ function createGitStore() {
                     loadingFiles: new Set([...state.loadingFiles, file])
                 }));
 
-                // Optimistically update the UI by moving the file to staged
-                update(state => ({
-                    ...state,
-                    gitStatus: state.gitStatus.map(item => 
-                        item.file === file 
-                            ? { ...item, staged: true }
-                            : item
-                    )
-                }));
+                // Optimistically update the UI
+                update(state => {
+                    const gitStatus = state.gitStatus?.map(item => {
+                        if (item.file === file) {
+                            return { 
+                                ...item, 
+                                staged: true,
+                                // Change status from '?' to 'A' for untracked files
+                                status: item.status === '?' ? 'A' : item.status 
+                            };
+                        }
+                        return item;
+                    }) || [];
+                    return { ...state, gitStatus };
+                });
 
                 await StageFile(projectPath, file);
                 // No need to refresh if the operation succeeded
