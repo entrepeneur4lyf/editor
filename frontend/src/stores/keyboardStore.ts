@@ -162,7 +162,17 @@ const defaultKeybindings: KeyBindingConfig = {
             modifiers: ['ctrl', 'shift'],
             description: 'Show Branch Palette',
             category: 'Git',
-            context: ['global']
+            context: ['editor']
+        },
+        action: () => {}
+    },
+    'git.showCommitPalette': {
+        defaultBinding: {
+            key: 'f',
+            modifiers: ['ctrl', 'shift'],
+            description: 'Search Git Commits',
+            category: 'Git',
+            context: ['editor']
         },
         action: () => {}
     },
@@ -511,9 +521,3 @@ const defaultKeybindings: KeyBindingConfig = {
             }
         }
     }
-
-    registerCommand('git.showBranchPalette', () => {}, {
-        label: 'Git: Switch Branch',
-        category: 'Git',
-        context: ['git']
-    });

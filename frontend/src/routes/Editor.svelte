@@ -12,11 +12,12 @@
     import { registerCommand, setKeyboardContext } from '@/stores/keyboardStore';
     import { get } from 'svelte/store';
     import Editor from "@/lib/editor/Editor.svelte";
-    import FileFinder from "@/lib/components/palletes/FileFinderPallete.svelte";
+    import FileFinderPallete from "@/lib/components/palletes/FileFinderPallete.svelte";
+    import GitCommitPallete from "@/lib/components/palletes/GitCommitPallete.svelte";
     import Modal from "@/lib/components/Modal.svelte";
     import BottomPane from "@/lib/editor/panes/BottomPane.svelte";
-    import { bottomPaneStore } from '@/stores/bottomPaneStore';
     import { focusStore } from '@/stores/focusStore';
+    import { bottomPaneStore } from '@/stores/bottomPaneStore';
 
     // Convert open files to tabs
     $: tabs = Array.from($fileStore.openFiles.entries()).map(([path, file]) => ({
@@ -38,6 +39,7 @@
     let isExplorerActive = true;
     let showCommandPalette = false;
     let showFileFinder = false;
+    let showCommitSearch = false;
 
     // Bottom pane state
     let bottomPaneState = $bottomPaneStore;
@@ -178,7 +180,8 @@
         });
 
         registerCommand('file.showFileFinder', () => showFileFinder = true);
-        
+        registerCommand('git.showCommitPalette', () => showCommitSearch = true);
+
         // Register sidebar toggle commands
         registerCommand('view.toggleLeftSidebar', () => {
             leftSidebarState.collapsed = !leftSidebarState.collapsed;
@@ -306,11 +309,14 @@
     
     <BottomBar />
 
-    <FileFinder 
+    <FileFinderPallete 
         bind:show={showFileFinder} 
         on:close={() => showFileFinder = false} 
         on:select={({ detail }) => scrollToTab(detail.path)}
     />
+
+
+    <GitCommitPallete bind:show={showCommitSearch} />
     
     <Modal
         bind:show={showCloseConfirmModal}
