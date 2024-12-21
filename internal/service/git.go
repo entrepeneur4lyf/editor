@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 )
 
 // FileStatus represents the status of a file in the Git repository
@@ -14,6 +15,13 @@ type FileStatus struct {
 	File   string `json:"file"`   // File path relative to repository root
 	Status string `json:"status"` // Status code: "M" for modified, "A" for added, "D" for deleted and "?" for untracked
 	Staged bool   `json:"staged"` // Whether the file is staged
+}
+
+// BranchInfo represents information about a Git branch
+type BranchInfo struct {
+	Name     string `json:"name"`
+	IsRemote bool   `json:"isRemote"`
+	IsHead   bool   `json:"isHead"`
 }
 
 // GitService handles Git operations for projects
@@ -276,4 +284,81 @@ func (s *GitService) Commit(projectPath string, message string) error {
 	}
 
 	return nil
+}
+
+// ListBranches returns a list of all branches in the repository
+func (s *GitService) ListBranches(projectPath string) ([]BranchInfo, error) {
+	repo, err := git.PlainOpen(projectPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	branches := []BranchInfo{}
+
+	// Get current branch to mark the HEAD
+	head, err := repo.Head()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get HEAD reference: %w", err)
+	}
+	currentBranchName := head.Name().Short()
+
+	// List local branches
+	branchIter, err := repo.Branches()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list branches: %w", err)
+	}
+
+	err = branchIter.ForEach(func(ref *plumbing.Reference) error {
+		branchName := ref.Name().Short()
+		branches = append(branches, BranchInfo{
+			Name:     branchName,
+			IsRemote: false,
+			IsHead:   branchName == currentBranchName,
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to iterate branches: %w", err)
+	}
+
+	// List remote branches
+	remotes, err := repo.Remotes()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list remotes: %w", err)
+	}
+
+	for _, remote := range remotes {
+		refs, err := remote.List(&git.ListOptions{})
+		if err != nil {
+			continue // Skip this remote if we can't list its refs
+		}
+
+		for _, ref := range refs {
+			if ref.Name().IsBranch() {
+				branchName := ref.Name().Short()
+				branches = append(branches, BranchInfo{
+					Name:     branchName,
+					IsRemote: true,
+					IsHead:   false,
+				})
+			}
+		}
+	}
+
+	return branches, nil
+}
+
+// GetCurrentBranch returns the name of the current branch
+func (s *GitService) GetCurrentBranch(projectPath string) (string, error) {
+	repo, err := git.PlainOpen(projectPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return "", fmt.Errorf("failed to get HEAD reference: %w", err)
+	}
+
+	return head.Name().Short(), nil
 }

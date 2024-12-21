@@ -209,3 +209,13 @@ func (a *App) DiscardChanges(projectPath string, file string) error {
 func (a *App) Commit(projectPath string, message string) error {
 	return a.git.Commit(projectPath, message)
 }
+
+// ListBranches returns a list of all branches in the repository
+func (a *App) ListBranches(projectPath string) ([]service.BranchInfo, error) {
+	return a.git.ListBranches(projectPath)
+}
+
+// GetCurrentBranch returns the name of the current branch
+func (a *App) GetCurrentBranch(projectPath string) (string, error) {
+	return a.git.GetCurrentBranch(projectPath)
+}
