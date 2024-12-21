@@ -8,7 +8,10 @@
         File,
         Undo,
         Plus,
-        Trash2
+        Trash2,
+
+        Loader
+
     } from 'lucide-svelte';
     import Button from '@/lib/components/Button.svelte';
     import Input from '@/lib/components/Input.svelte';
@@ -75,7 +78,11 @@
     <div class="flex flex-col h-full">
         <div class="flex items-center justify-between h-[35px] px-4 border-b border-gray-800">
             <div class="flex items-center space-x-2">
-                <GitBranch size={16} />
+                {#if $gitStore.isLoading}
+                    <Loader class="w-4 h-4 text-gray-500 animate-spin" />
+                {:else}
+                    <GitBranch size={16} />
+                {/if}
                 <span class="text-sm font-medium">Source Control</span>
             </div>
             <div class="flex items-center space-x-1">
@@ -85,6 +92,7 @@
                     icon={RefreshCw}
                     title="Refresh"
                     on:click={() => gitStore.refreshStatus()}
+                    disabled={$gitStore.isLoading}
                 />
             </div>
         </div>
@@ -112,7 +120,11 @@
                                 {#each stagedChanges as item}
                                     <div class="flex items-center text-sm py-1 group hover:bg-gray-800 rounded-sm mx-1 hover:rounded-md">
                                         <div class="flex items-center px-2 w-full">
-                                            <File class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
+                                            {#if $gitStore.loadingFiles.has(item.file)}
+                                                <Loader class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0 animate-spin" />
+                                            {:else}
+                                                <File class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
+                                            {/if}
                                             <span 
                                                 class="text-gray-300 truncate flex-1" 
                                                 title={item.file}
@@ -165,7 +177,11 @@
                                 {#each unstagedChanges as item}
                                     <div class="flex items-center text-sm py-1 group hover:bg-gray-800 rounded-sm mx-1 hover:rounded-md">
                                         <div class="flex items-center px-2 w-full">
-                                            <File class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
+                                            {#if $gitStore.loadingFiles.has(item.file)}
+                                                <Loader class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0 animate-spin" />
+                                            {:else}
+                                                <File class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
+                                            {/if}
                                             <span 
                                                 class="text-gray-300 truncate flex-1" 
                                                 title={item.file}
