@@ -44,6 +44,18 @@
             return;
         }
 
+        // Handle Alt+number for quick selection
+        if (event.altKey && /^[1-9]$/.test(event.key)) {
+            event.preventDefault();
+            const index = parseInt(event.key) - 1;
+            if (index < totalItems) {
+                selectedIndex = index;
+                dispatch('selectionChange', selectedIndex);
+                dispatch('select');
+            }
+            return;
+        }
+
         // Handle Escape to close
         if (event.key === 'Escape') {
             event.preventDefault();
