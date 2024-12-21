@@ -44,6 +44,7 @@
             return;
         }
 
+        // Handle Escape to close
         if (event.key === 'Escape') {
             event.preventDefault();
             closePalette();
@@ -79,6 +80,7 @@
                 }
                 break;
             default:
+                // For all other keys, just dispatch the event without any special handling
                 dispatch('keydown', event);
         }
     }
@@ -107,10 +109,14 @@
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
+<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 {#if show}
-    <button 
+    <div 
         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center pt-[20vh]"
         on:click={handleClickOutside}
+        on:keydown={(e) => e.key === 'Escape' && handleClickOutside()}
+        role="dialog"
+        aria-modal="true"
     >
         <div 
             class="palette-content w-[600px] bg-gray-900 rounded-lg shadow-xl border border-gray-700"
@@ -133,5 +139,5 @@
 
             <slot {selectedIndex} />
         </div>
-    </button>
+    </div>
 {/if}
