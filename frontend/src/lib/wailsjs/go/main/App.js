@@ -26,6 +26,10 @@ export function DestroyTerminal(arg1) {
   return window['go']['main']['App']['DestroyTerminal'](arg1);
 }
 
+export function DiscardChanges(arg1, arg2) {
+  return window['go']['main']['App']['DiscardChanges'](arg1, arg2);
+}
+
 export function GetAvailableShells() {
   return window['go']['main']['App']['GetAvailableShells']();
 }

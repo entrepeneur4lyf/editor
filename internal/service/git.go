@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/go-git/go-git/v5"
@@ -173,6 +174,89 @@ func (s *GitService) UnstageFile(projectPath string, file string) error {
 	_, err = worktree.Remove(file)
 	if err != nil {
 		return fmt.Errorf("failed to unstage file: %w", err)
+	}
+
+	return nil
+}
+
+// DiscardChanges discards changes in an unstaged file, reverting it to the last commit
+func (s *GitService) DiscardChanges(projectPath string, file string) error {
+	// Open the repository
+	repo, err := git.PlainOpen(projectPath)
+	if err != nil {
+		return fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	// Get worktree to check file status
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	// Check if file is untracked
+	status, err := worktree.Status()
+	if err != nil {
+		return fmt.Errorf("failed to get status: %w", err)
+	}
+
+	fileStatus := status.File(file)
+	if fileStatus.Staging == git.Untracked {
+		fullPath := filepath.Join(projectPath, file)
+		if err := os.Remove(fullPath); err != nil {
+			return fmt.Errorf("failed to delete untracked file: %w", err)
+		}
+		return nil
+	}
+
+	// Get HEAD commit
+	ref, err := repo.Head()
+	if err != nil {
+		return fmt.Errorf("failed to get HEAD: %w", err)
+	}
+
+	commit, err := repo.CommitObject(ref.Hash())
+	if err != nil {
+		return fmt.Errorf("failed to get commit: %w", err)
+	}
+
+	// Get the tree for the commit
+	tree, err := commit.Tree()
+	if err != nil {
+		return fmt.Errorf("failed to get tree: %w", err)
+	}
+
+	// Find the file entry in the tree to get both content and mode
+	entry, err := tree.FindEntry(file)
+	if err != nil {
+		return fmt.Errorf("failed to find file in tree: %w", err)
+	}
+
+	// Get file object
+	treeFile, err := tree.File(file)
+	if err != nil {
+		return fmt.Errorf("failed to get file from tree: %w", err)
+	}
+
+	// Get the contents
+	contents, err := treeFile.Contents()
+	if err != nil {
+		return fmt.Errorf("failed to get file contents: %w", err)
+	}
+
+	// Write the contents back to the file
+	fullPath := filepath.Join(projectPath, file)
+	err = os.WriteFile(fullPath, []byte(contents), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+
+	// Set the original permissions from git tree entry
+	mode, modeErr := entry.Mode.ToOSFileMode()
+	if modeErr != nil {
+		return fmt.Errorf("failed to convert file mode: %w", modeErr)
+	}
+	if err := os.Chmod(fullPath, mode); err != nil {
+		return fmt.Errorf("failed to set file permissions: %w", err)
 	}
 
 	return nil

@@ -199,3 +199,8 @@ func (a *App) StageFile(projectPath string, file string) error {
 func (a *App) UnstageFile(projectPath string, file string) error {
 	return a.git.UnstageFile(projectPath, file)
 }
+
+// DiscardChanges discards changes in a file, reverting it to the last commit
+func (a *App) DiscardChanges(projectPath string, file string) error {
+	return a.git.DiscardChanges(projectPath, file)
+}
