@@ -1,16 +1,11 @@
 import { writable, get } from 'svelte/store';
-import { IsGitRepository, InitGitRepository } from '@/lib/wailsjs/go/main/App';
+import { IsGitRepository, InitGitRepository, GetGitStatus } from '@/lib/wailsjs/go/main/App';
 import { fileStore } from '@/stores/fileStore';
+import type { service } from '@/lib/wailsjs/go/models';
 
-
-export interface GitStatus {
-    file: string;
-    status: 'modified' | 'new' | 'deleted';
-    staged: boolean;
-}
 
 interface GitState {
-    gitStatus: GitStatus[];
+    gitStatus: service.FileStatus[];
     stagedExpanded: boolean;
     changesExpanded: boolean;
     isRepository: boolean;
@@ -41,11 +36,39 @@ function createGitStore() {
                 update(state => ({ ...state, isLoading: true, error: null }));
                 const isRepo = await IsGitRepository(projectPath);
                 update(state => ({ ...state, isRepository: isRepo, isLoading: false }));
+
+                // If it's a repository, get the initial status
+                if (isRepo) {
+                    await this.refreshStatus();
+                }
             } catch (error) {
                 update(state => ({ 
                     ...state, 
                     isLoading: false, 
                     error: `Failed to check repository status: ${error.message}` 
+                }));
+            }
+        },
+
+        async refreshStatus() {
+            try {
+                const projectPath = get(fileStore).currentProjectPath;
+                if (!projectPath) {
+                    return;
+                }
+
+                update(state => ({ ...state, isLoading: true, error: null }));
+                const status = await GetGitStatus(projectPath);
+                update(state => ({ 
+                    ...state, 
+                    gitStatus: status,
+                    isLoading: false 
+                }));
+            } catch (error) {
+                update(state => ({ 
+                    ...state, 
+                    isLoading: false, 
+                    error: `Failed to get Git status: ${error.message}` 
                 }));
             }
         },
@@ -60,6 +83,9 @@ function createGitStore() {
                 update(state => ({ ...state, isLoading: true, error: null }));
                 await InitGitRepository(projectPath);
                 update(state => ({ ...state, isRepository: true, isLoading: false }));
+                
+                // Get initial status after initialization
+                await this.refreshStatus();
             } catch (error) {
                 update(state => ({ 
                     ...state, 
@@ -79,29 +105,25 @@ function createGitStore() {
             changesExpanded: !state.changesExpanded
         })),
 
-        setGitStatus: (status: GitStatus[]) => update(state => ({
+        setGitStatus: (status: service.FileStatus[]) => update(state => ({
             ...state,
             gitStatus: status
         })),
 
-        stageFile: (file: string) => update(state => ({
-            ...state,
-            gitStatus: state.gitStatus.map(item =>
-                item.file === file ? { ...item, staged: true } : item
-            )
-        })),
+        stageFile: async (file: string) => {
+            // TODO: Implement with backend
+            console.log('Staging file:', file);
+        },
 
-        unstageFile: (file: string) => update(state => ({
-            ...state,
-            gitStatus: state.gitStatus.map(item =>
-                item.file === file ? { ...item, staged: false } : item
-            )
-        })),
+        unstageFile: async (file: string) => {
+            // TODO: Implement with backend
+            console.log('Unstaging file:', file);
+        },
 
-        discardChanges: (file: string) => update(state => ({
-            ...state,
-            gitStatus: state.gitStatus.filter(item => item.file !== file)
-        })),
+        discardChanges: async (file: string) => {
+            // TODO: Implement with backend
+            console.log('Discarding changes:', file);
+        },
 
         reset: () => set({
             gitStatus: [],

@@ -1,45 +1,51 @@
 <script lang="ts">
     import {
-        MoreVertical,
         GitBranch,
         GitCommit,
-        Plus,
         RefreshCw,
-        Undo,
-        Trash2,
-        File,
         ChevronDown,
-        ChevronRight
+        ChevronRight,
+        File,
+        Undo,
+        Plus,
+        Trash2
     } from 'lucide-svelte';
     import Button from '@/lib/components/Button.svelte';
     import Input from '@/lib/components/Input.svelte';
     import { gitStore } from '@/stores/gitStore';
-    import DropdownMenu from '@/lib/components/DropdownMenu.svelte';
     import { onMount } from 'svelte';
+    import { get } from 'svelte/store';
 
     let commitMessage = '';
 
-    // Subscribe to gitStore
+    // Derived values for staged and unstaged changes
     $: stagedChanges = $gitStore.gitStatus.filter(item => item.staged);
     $: unstagedChanges = $gitStore.gitStatus.filter(item => !item.staged);
-    $: stagedExpanded = $gitStore.stagedExpanded;
-    $: changesExpanded = $gitStore.changesExpanded;
+
+    // Status color mapping
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'D': return 'text-rose-500';     // Deleted
+            case 'M': return 'text-blue-500';    // Modified
+            case '?': return 'text-gray-500';    // Untracked
+            case 'A': return 'text-green-500';   // Added
+            case 'R': return 'text-purple-500';  // Renamed
+            case 'C': return 'text-yellow-500';  // Copied
+            case 'U': return 'text-orange-500';  // Unmerged
+            default: return 'text-gray-500';
+        }
+    };
 
     function handleCommit() {
-        // Implement commit functionality
+        // TODO: Implement commit functionality
+        console.log('Committing with message:', commitMessage);
         commitMessage = '';
-    }
-
-    // Mock data - Replace with actual Git integration later
-    $: if (!$gitStore.gitStatus.length) {
-        gitStore.setGitStatus([
-            { status: 'modified', file: 'src/App.tsx', staged: true },
-            { status: 'new', file: 'src/LeftSidebar.tsx', staged: false }
-        ]);
     }
 
     onMount(() => {
         gitStore.checkRepository();
+        console.log('Git pane mounted');
+        console.log(get(gitStore).gitStatus);
     });
 </script>
 
@@ -76,45 +82,10 @@
                 <Button
                     variant="ghost"
                     size="sm"
-                    icon={Plus}
-                    title="Stage All Changes"
-                    on:click={() => gitStore.stageAll()}
-                />
-                <Button
-                    variant="ghost"
-                    size="sm"
                     icon={RefreshCw}
                     title="Refresh"
+                    on:click={() => gitStore.refreshStatus()}
                 />
-                <div class="relative">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        icon={MoreVertical}
-                    />
-                    <DropdownMenu
-                        items={[
-                            {
-                                label: 'Stage All Changes',
-                                icon: Plus,
-                                onClick: () => gitStore.stageAll()
-                            },
-                            {
-                                label: 'Unstage All Changes',
-                                icon: Undo,
-                                onClick: () => gitStore.unstageAll()
-                            },
-                            {
-                                label: 'Discard All Changes',
-                                icon: Trash2,
-                                onClick: () => gitStore.discardAll(),
-                                danger: true
-                            }
-                        ]}
-                        onClose={() => {}}
-                        show={false}
-                    />
-                </div>
             </div>
         </div>
 
@@ -123,20 +94,20 @@
                 <!-- Staged Changes Section -->
                 {#if stagedChanges.length > 0}
                     <div class="mb-4">
-                        <div 
+                        <button 
                             class="flex items-center text-sm text-gray-500 mb-1 px-2 cursor-pointer hover:text-gray-400"
-                            on:click={() => gitStore.toggleStaged()}
+                            on:click={() => gitStore.toggleStagedExpanded()}
                         >
                             <span class="w-4 h-4 flex items-center justify-center">
-                                {#if stagedExpanded}
+                                {#if $gitStore.stagedExpanded}
                                     <ChevronDown class="w-4 h-4" />
                                 {:else}
                                     <ChevronRight class="w-4 h-4" />
                                 {/if}
                             </span>
                             <span class="font-bold ml-2">Staged Changes ({stagedChanges.length})</span>
-                        </div>
-                        {#if stagedExpanded}
+                        </button>
+                        {#if $gitStore.stagedExpanded}
                             <div>
                                 {#each stagedChanges as item}
                                     <div class="flex items-center text-sm py-1 group hover:bg-gray-800 rounded-sm mx-1 hover:rounded-md">
@@ -144,7 +115,7 @@
                                             <File class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
                                             <span 
                                                 class="text-gray-300 truncate flex-1" 
-                                                title={`${item.file} - ${item.status === 'modified' ? 'modified' : item.status === 'new' ? 'added' : 'deleted'}`}
+                                                title={item.file}
                                             >
                                                 {item.file}
                                             </span>
@@ -157,7 +128,7 @@
                                                     on:click={() => gitStore.unstageFile(item.file)}
                                                 />
                                             </div>
-                                            <span class="text-green-500 ml-2 w-4 text-center">{item.status === 'modified' ? 'M' : item.status === 'new' ? 'A' : 'D'}</span>
+                                            <span class={`ml-2 w-4 font-semibold text-center ${getStatusColor(item.status)}`}>{item.status}</span>
                                         </div>
                                     </div>
                                 {/each}
@@ -169,20 +140,20 @@
                 <!-- Changes Section -->
                 {#if unstagedChanges.length > 0}
                     <div class="mb-4">
-                        <div 
+                        <button 
                             class="flex items-center text-sm text-gray-500 mb-1 px-2 cursor-pointer hover:text-gray-400"
-                            on:click={() => gitStore.toggleChanges()}
+                            on:click={() => gitStore.toggleChangesExpanded()}
                         >
                             <span class="w-4 h-4 flex items-center justify-center">
-                                {#if changesExpanded}
+                                {#if $gitStore.changesExpanded}
                                     <ChevronDown class="w-4 h-4" />
                                 {:else}
                                     <ChevronRight class="w-4 h-4" />
                                 {/if}
                             </span>
                             <span class="font-bold ml-2">Changes ({unstagedChanges.length})</span>
-                        </div>
-                        {#if changesExpanded}
+                        </button>
+                        {#if $gitStore.changesExpanded}
                             <div>
                                 {#each unstagedChanges as item}
                                     <div class="flex items-center text-sm py-1 group hover:bg-gray-800 rounded-sm mx-1 hover:rounded-md">
@@ -190,7 +161,7 @@
                                             <File class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
                                             <span 
                                                 class="text-gray-300 truncate flex-1" 
-                                                title={`${item.file} - ${item.status === 'modified' ? 'modified' : item.status === 'new' ? 'untracked' : 'deleted'}`}
+                                                title={item.file}
                                             >
                                                 {item.file}
                                             </span>
@@ -210,7 +181,7 @@
                                                     on:click={() => gitStore.discardChanges(item.file)}
                                                 />
                                             </div>
-                                            <span class="text-yellow-500 ml-2 w-4 text-center">{item.status === 'modified' ? 'M' : item.status === 'new' ? 'U' : 'D'}</span>
+                                            <span class={`ml-2 w-4 text-center ${getStatusColor(item.status)}`}>{item.status}</span>
                                         </div>
                                     </div>
                                 {/each}
@@ -240,4 +211,3 @@
         </div>
     </div>
 {/if}
-

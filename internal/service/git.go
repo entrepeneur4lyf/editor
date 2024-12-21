@@ -114,12 +114,16 @@ func (s *GitService) GetStatus(projectPath string) ([]FileStatus, error) {
 			File: file,
 		}
 
-		// If the file is staged, use the staging status
-		if fileStatus.Staging != git.Unmodified {
+		// For untracked files
+		if fileStatus.Worktree == git.Untracked {
+			fs.Staged = false
+			fs.Status = string(git.Untracked)
+		} else if fileStatus.Staging != git.Unmodified {
+			// For staged changes
 			fs.Staged = true
 			fs.Status = string(fileStatus.Staging)
 		} else {
-			// Otherwise use the worktree status
+			// For unstaged changes
 			fs.Staged = false
 			fs.Status = string(fileStatus.Worktree)
 		}
