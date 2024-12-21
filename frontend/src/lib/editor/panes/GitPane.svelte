@@ -14,7 +14,7 @@
     import Button from '../../components/Button.svelte';
     import Input from '../../components/Input.svelte';
     import { gitStore } from '@/stores/gitStore';
-    import type { GitStatusItem } from '@/stores/gitStore';
+    import DropdownMenu from '@/lib/components/DropdownMenu.svelte';
 
     let commitMessage = '';
 
@@ -83,6 +83,8 @@
                             danger: true
                         }
                     ]}
+                    onClose={() => {}}
+                    show={false}
                 />
             </div>
         </div>
@@ -196,13 +198,11 @@
                 variant="textarea"
                 bind:value={commitMessage}
                 placeholder="Message (⌘Enter to commit)"
-                class="mb-2"
             />
             <Button
                 variant="primary"
                 size="sm"
                 icon={GitCommit}
-                class="w-full"
                 on:click={handleCommit}
                 disabled={!commitMessage || (stagedChanges.length === 0)}
             >
