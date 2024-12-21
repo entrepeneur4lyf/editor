@@ -1,5 +1,20 @@
 import { writable, get } from 'svelte/store';
-import { IsGitRepository, InitGitRepository, GetGitStatus, StageFile, UnstageFile, DiscardChanges, Commit, ListBranches, GetCurrentBranch } from '@/lib/wailsjs/go/main/App';
+import { 
+    IsGitRepository, 
+    InitGitRepository, 
+    GetGitStatus, 
+    StageFile, 
+    UnstageFile, 
+    DiscardChanges, 
+    Commit, 
+    ListBranches, 
+    GetCurrentBranch,
+    ListCommits,
+    ListCommitsAfter,
+    ListCommitsByBranch,
+    ListCommitsByAuthor,
+    SearchCommits
+} from '@/lib/wailsjs/go/main/App';
 import { fileStore } from '@/stores/fileStore';
 import type { service } from '@/lib/wailsjs/go/models';
 
@@ -13,6 +28,9 @@ interface GitState {
     error: string | null;
     branches: service.BranchInfo[];
     currentBranch: string | null;
+    commits: service.CommitInfo[];
+    commitsLoading: boolean;
+    commitsError: string | null;
 }
 
 function createGitStore() {
@@ -25,7 +43,10 @@ function createGitStore() {
         loadingFiles: new Set(),
         error: null,
         branches: [],
-        currentBranch: null
+        currentBranch: null,
+        commits: [],
+        commitsLoading: false,
+        commitsError: null
     });
 
     return {
@@ -293,6 +314,108 @@ function createGitStore() {
             }
         },
 
+        async getCommits(filter: service.CommitFilter) {
+            const projectPath = get(fileStore).currentProjectPath;
+            if (!projectPath) {
+                return;
+            }
+
+            update(state => ({ ...state, commitsLoading: true, commitsError: null }));
+            try {
+                const commits = await ListCommits(projectPath, filter);
+                update(state => ({ ...state, commits }));
+            } catch (error) {
+                update(state => ({ ...state, commitsError: error.message }));
+            } finally {
+                update(state => ({ ...state, commitsLoading: false }));
+            }
+        },
+
+        async getCommitsAfter(offsetHash: string, limit: number) {
+            const projectPath = get(fileStore).currentProjectPath;
+            if (!projectPath) {
+                return;
+            }
+
+            update(state => ({ ...state, commitsLoading: true, commitsError: null }));
+            try {
+                const commits = await ListCommitsAfter(projectPath, offsetHash, limit);
+                update(state => ({ ...state, commits }));
+            } catch (error) {
+                update(state => ({ ...state, commitsError: error.message }));
+            } finally {
+                update(state => ({ ...state, commitsLoading: false }));
+            }
+        },
+
+        async getBranchCommits(branch: string, limit: number) {
+            const projectPath = get(fileStore).currentProjectPath;
+            if (!projectPath) {
+                return;
+            }
+
+            update(state => ({ ...state, commitsLoading: true, commitsError: null }));
+            try {
+                const commits = await ListCommitsByBranch(projectPath, branch, limit);
+                update(state => ({ ...state, commits }));
+            } catch (error) {
+                update(state => ({ ...state, commitsError: error.message }));
+            } finally {
+                update(state => ({ ...state, commitsLoading: false }));
+            }
+        },
+
+        async getAuthorCommits(author: string, limit: number) {
+            const projectPath = get(fileStore).currentProjectPath;
+            if (!projectPath) {
+                return;
+            }
+
+            update(state => ({ ...state, commitsLoading: true, commitsError: null }));
+            try {
+                const commits = await ListCommitsByAuthor(projectPath, author, limit);
+                update(state => ({ ...state, commits }));
+            } catch (error) {
+                update(state => ({ ...state, commitsError: error.message }));
+            } finally {
+                update(state => ({ ...state, commitsLoading: false }));
+            }
+        },
+
+        async searchCommits(query: string, limit: number) {
+            const projectPath = get(fileStore).currentProjectPath;
+            if (!projectPath) {
+                return;
+            }
+
+            update(state => ({ ...state, commitsLoading: true, commitsError: null }));
+            try {
+                const commits = await SearchCommits(projectPath, query, limit);
+                update(state => ({ ...state, commits }));
+            } catch (error) {
+                update(state => ({ ...state, commitsError: error.message }));
+            } finally {
+                update(state => ({ ...state, commitsLoading: false }));
+            }
+        },
+
+        async loadMoreCommits(limit: number) {
+            const state = get(this);
+            if (state.commits.length === 0) {
+                return;
+            }
+
+            const lastCommit = state.commits[state.commits.length - 1];
+            const newCommits = await this.getCommitsAfter(lastCommit.hash, limit);
+            
+            if (newCommits) {
+                update(state => ({ 
+                    ...state, 
+                    commits: [...state.commits, ...newCommits]
+                }));
+            }
+        },
+
         reset: () => set({
             gitStatus: [],
             stagedExpanded: true,
@@ -302,7 +425,10 @@ function createGitStore() {
             loadingFiles: new Set(),
             error: null,
             branches: [],
-            currentBranch: null
+            currentBranch: null,
+            commits: [],
+            commitsLoading: false,
+            commitsError: null
         })
     };
 }
