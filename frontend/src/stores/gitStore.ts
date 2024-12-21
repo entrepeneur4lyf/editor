@@ -1,5 +1,5 @@
 import { writable, get } from 'svelte/store';
-import { IsGitRepository, InitGitRepository, GetGitStatus, StageFile, UnstageFile, DiscardChanges } from '@/lib/wailsjs/go/main/App';
+import { IsGitRepository, InitGitRepository, GetGitStatus, StageFile, UnstageFile, DiscardChanges, Commit } from '@/lib/wailsjs/go/main/App';
 import { fileStore } from '@/stores/fileStore';
 import type { service } from '@/lib/wailsjs/go/models';
 
@@ -197,7 +197,7 @@ function createGitStore() {
             }
         },
 
-        async discardChanges(file: string) {
+        async discardChanges(file: string): Promise<void> {
             try {
                 const projectPath = get(fileStore).currentProjectPath;
                 if (!projectPath) {
@@ -212,7 +212,7 @@ function createGitStore() {
                 // Optimistically update the UI by removing the file from the list
                 update(state => ({
                     ...state,
-                    gitStatus: state.gitStatus.filter(item => item.file !== file)
+                    gitStatus: state.gitStatus?.filter(item => item.file !== file) || []
                 }));
 
                 await DiscardChanges(projectPath, file);
@@ -230,6 +230,21 @@ function createGitStore() {
                     loadingFiles.delete(file);
                     return { ...state, loadingFiles };
                 });
+            }
+        },
+
+        async commit(message: string): Promise<void> {
+            const state = get(fileStore);
+            if (!state.currentProjectPath) return;
+
+            try {
+                await Commit(state.currentProjectPath, message);
+                
+                // After successful commit, refresh the git status
+                await this.refreshStatus();
+            } catch (error) {
+                update(state => ({ ...state, error: `Failed to commit: ${error}` }));
+                throw error;
             }
         },
 

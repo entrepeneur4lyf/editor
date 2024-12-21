@@ -6,6 +6,10 @@ export function AddProject(arg1, arg2) {
   return window['go']['main']['App']['AddProject'](arg1, arg2);
 }
 
+export function Commit(arg1, arg2) {
+  return window['go']['main']['App']['Commit'](arg1, arg2);
+}
+
 export function CreateDirectory(arg1) {
   return window['go']['main']['App']['CreateDirectory'](arg1);
 }

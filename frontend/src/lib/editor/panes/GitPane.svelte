@@ -17,13 +17,13 @@
     import Input from '@/lib/components/Input.svelte';
     import { gitStore } from '@/stores/gitStore';
     import { onMount } from 'svelte';
-    import { get } from 'svelte/store';
 
     let commitMessage = '';
+    let commitInProgress = false;
 
     // Derived values for staged and unstaged changes
-    $: stagedChanges = $gitStore.gitStatus.filter(item => item.staged);
-    $: unstagedChanges = $gitStore.gitStatus.filter(item => !item.staged);
+    $: stagedChanges = $gitStore.gitStatus?.filter(item => item.staged) || [];
+    $: unstagedChanges = $gitStore.gitStatus?.filter(item => !item.staged) || [];
 
     // Status color mapping
     const getStatusColor = (status: string) => {
@@ -39,16 +39,31 @@
         }
     };
 
-    function handleCommit() {
-        // TODO: Implement commit functionality
-        console.log('Committing with message:', commitMessage);
-        commitMessage = '';
+    // Handle commit action
+    async function handleCommit() {
+        if (!commitMessage || stagedChanges.length === 0 || commitInProgress) return;
+        
+        commitInProgress = true;
+        try {
+            await gitStore.commit(commitMessage);
+            commitMessage = '';
+        } catch (error) {
+            console.error('Failed to commit:', error);
+        } finally {
+            commitInProgress = false;
+        }
+    }
+
+    // Handle keyboard shortcuts
+    function handleKeydown(event: KeyboardEvent) {
+        // ⌘Enter or Ctrl+Enter to commit
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+            handleCommit();
+        }
     }
 
     onMount(() => {
         gitStore.checkRepository();
-        console.log('Git pane mounted');
-        console.log(get(gitStore).gitStatus);
     });
 </script>
 
@@ -228,15 +243,21 @@
                     variant="textarea"
                     bind:value={commitMessage}
                     placeholder="Message (⌘Enter to commit)"
+                    on:keydown={handleKeydown}
                 />
                 <Button
                     variant="primary"
                     size="sm"
                     icon={GitCommit}
                     on:click={handleCommit}
-                    disabled={!commitMessage || (stagedChanges.length === 0)}
+                    disabled={!commitMessage || (stagedChanges.length === 0) || commitInProgress}
                 >
-                    Commit
+                    {#if commitInProgress}
+                        <Loader class="w-4 h-4 animate-spin" />
+                        Committing...
+                    {:else}
+                        Commit
+                    {/if}
                 </Button>
             </div>
         </div>

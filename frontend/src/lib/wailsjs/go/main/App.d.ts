@@ -5,6 +5,8 @@ import {service} from '../models';
 
 export function AddProject(arg1:string,arg2:string):Promise<db.Project>;
 
+export function Commit(arg1:string,arg2:string):Promise<void>;
+
 export function CreateDirectory(arg1:string):Promise<void>;
 
 export function CreateFile(arg1:string):Promise<void>;
