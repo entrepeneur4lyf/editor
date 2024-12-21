@@ -40,12 +40,17 @@ function createGitStore() {
 
                 update(state => ({ ...state, isLoading: true, error: null }));
                 const isRepo = await IsGitRepository(projectPath);
-                update(state => ({ ...state, isRepository: isRepo, isLoading: false }));
+                update(state => ({ ...state, isRepository: isRepo }));
 
-                // If it's a repository, get the initial status
+                // If it's a repository, get the initial status and branches
                 if (isRepo) {
-                    await this.refreshStatus();
+                    await Promise.all([
+                        this.refreshStatus(),
+                        this.refreshBranches()
+                    ]);
                 }
+                
+                update(state => ({ ...state, isLoading: false }));
             } catch (error) {
                 update(state => ({
                     ...state,
