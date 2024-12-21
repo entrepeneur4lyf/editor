@@ -219,3 +219,28 @@ func (a *App) ListBranches(projectPath string) ([]service.BranchInfo, error) {
 func (a *App) GetCurrentBranch(projectPath string) (string, error) {
 	return a.git.GetCurrentBranch(projectPath)
 }
+
+// ListCommits returns a list of commits based on the provided filters
+func (a *App) ListCommits(projectPath string, filter service.CommitFilter) ([]service.CommitInfo, error) {
+	return a.git.ListCommits(projectPath, filter)
+}
+
+// ListCommitsAfter returns commits after a specific commit hash
+func (a *App) ListCommitsAfter(projectPath string, offsetHash string, limit int) ([]service.CommitInfo, error) {
+	return a.git.ListCommitsAfter(projectPath, offsetHash, limit)
+}
+
+// ListCommitsByBranch returns commits from a specific branch
+func (a *App) ListCommitsByBranch(projectPath string, branch string, limit int) ([]service.CommitInfo, error) {
+	return a.git.ListCommitsByBranch(projectPath, branch, limit)
+}
+
+// ListCommitsByAuthor returns commits by a specific author
+func (a *App) ListCommitsByAuthor(projectPath string, author string, limit int) ([]service.CommitInfo, error) {
+	return a.git.ListCommitsByAuthor(projectPath, author, limit)
+}
+
+// SearchCommits searches for commits by message
+func (a *App) SearchCommits(projectPath string, query string, limit int) ([]service.CommitInfo, error) {
+	return a.git.SearchCommits(projectPath, query, limit)
+}

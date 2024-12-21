@@ -43,6 +43,14 @@ export function IsGitRepository(arg1:string):Promise<boolean>;
 
 export function ListBranches(arg1:string):Promise<Array<service.BranchInfo>>;
 
+export function ListCommits(arg1:string,arg2:service.CommitFilter):Promise<Array<service.CommitInfo>>;
+
+export function ListCommitsAfter(arg1:string,arg2:string,arg3:number):Promise<Array<service.CommitInfo>>;
+
+export function ListCommitsByAuthor(arg1:string,arg2:string,arg3:number):Promise<Array<service.CommitInfo>>;
+
+export function ListCommitsByBranch(arg1:string,arg2:string,arg3:number):Promise<Array<service.CommitInfo>>;
+
 export function LoadDirectoryContents(arg1:string):Promise<service.FileNode>;
 
 export function OpenConfigFile():Promise<string>;
@@ -54,6 +62,8 @@ export function RenameFile(arg1:string,arg2:string):Promise<void>;
 export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<void>;
 
 export function SaveFile(arg1:string,arg2:string):Promise<void>;
+
+export function SearchCommits(arg1:string,arg2:string,arg3:number):Promise<Array<service.CommitInfo>>;
 
 export function SearchFiles(arg1:string,arg2:string):Promise<Array<service.FileNode>>;
 

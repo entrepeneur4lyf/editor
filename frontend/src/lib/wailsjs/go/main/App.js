@@ -82,6 +82,22 @@ export function ListBranches(arg1) {
   return window['go']['main']['App']['ListBranches'](arg1);
 }
 
+export function ListCommits(arg1, arg2) {
+  return window['go']['main']['App']['ListCommits'](arg1, arg2);
+}
+
+export function ListCommitsAfter(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ListCommitsAfter'](arg1, arg2, arg3);
+}
+
+export function ListCommitsByAuthor(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ListCommitsByAuthor'](arg1, arg2, arg3);
+}
+
+export function ListCommitsByBranch(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ListCommitsByBranch'](arg1, arg2, arg3);
+}
+
 export function LoadDirectoryContents(arg1) {
   return window['go']['main']['App']['LoadDirectoryContents'](arg1);
 }
@@ -104,6 +120,10 @@ export function ResizeTerminal(arg1, arg2, arg3) {
 
 export function SaveFile(arg1, arg2) {
   return window['go']['main']['App']['SaveFile'](arg1, arg2);
+}
+
+export function SearchCommits(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SearchCommits'](arg1, arg2, arg3);
 }
 
 export function SearchFiles(arg1, arg2) {
