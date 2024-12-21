@@ -1,92 +1,45 @@
 <script lang="ts">
-    import { onMount, createEventDispatcher, afterUpdate, onDestroy } from 'svelte';
+    import { onMount } from 'svelte';
     import BasePalette from './components/BasePalette.svelte';
-    import ResultsList from './components/ResultsList.svelte';
     import CommandItem from './components/CommandItem.svelte';
-    import { fuzzySearch } from '@/lib/utils/fuzzySearch';
-    import { commandStore, type Command } from '@/stores/commandStore';
-    import { keyBindings, formatKeybinding, addKeyboardContext, removeKeyboardContext, type KeyBinding } from '@/stores/keyboardStore';
+    import ResultsList from './components/ResultsList.svelte';
+    import { commandStore } from '@/stores/commandStore';
     import { focusStore } from '@/stores/focusStore';
-
-    const dispatch = createEventDispatcher();
+    import type { Command } from '@/types/command';
 
     export let show = false;
-    let previousShow = show;
-
-    let searchQuery = '';
+    export let searchQuery = '';
     let selectedIndex = 0;
+    let previousShow = show;
     let filteredCommands: Command[] = [];
-    let vimModeEnabled = false;
-
     let paletteId = focusStore.generateId('command-palette');
 
-    // Convert keyboard bindings to commands
-    $: allCommands = Object.entries($keyBindings).map(([id, binding]) => ({
-        id,
-        label: binding.description || id,
-        category: binding.category,
-        context: binding.context?.join(', ') || 'global',
-        shortcut: formatKeybinding(binding),
-        action: binding.action
-    }));
-
-    // Update filtered commands whenever commands or searchQuery changes
     $: {
-        if (searchQuery?.length > 0) {
-            filteredCommands = fuzzySearch(allCommands, searchQuery, (cmd) => `${cmd.label} ${cmd.category} ${cmd.context}`);
+        if (searchQuery.trim() === '') {
+            filteredCommands = $commandStore;
         } else {
-            filteredCommands = [...allCommands];
+            const query = searchQuery.toLowerCase();
+            filteredCommands = $commandStore.filter(command => {
+                const label = command.label.toLowerCase();
+                const category = command.category?.toLowerCase() || '';
+                const context = command.context?.join(' ').toLowerCase() || '';
+                return label.includes(query) || category.includes(query) || context.includes(query);
+            });
         }
-        selectedIndex = Math.min(selectedIndex, filteredCommands.length - 1);
+    }
+
+    // Reset selection when commands change
+    $: {
+        selectedIndex = Math.min(selectedIndex, Math.max(0, filteredCommands.length - 1));
     }
 
     // Initialize when opening
-    $: if (show) {
-        addKeyboardContext('commandPalette');
-        filteredCommands = [...allCommands];
-        selectedIndex = 0;
-    }
-
-    // Reset state when closing
-    $: if (!show && previousShow) {
-        removeKeyboardContext('commandPalette');
+    $: if (show && !previousShow) {
         searchQuery = '';
         selectedIndex = 0;
-        focusStore.restorePrevious();
-    }
-
-    afterUpdate(() => {
-        // If command palette was showing and is now hidden, disable vim mode
-        if (previousShow && !show) {
-            vimModeEnabled = false;
-        }
         previousShow = show;
-    });
-
-    function handleKeyDown(event: CustomEvent<KeyboardEvent>) {
-        const keyboardEvent = event.detail;
-        switch(keyboardEvent.key) {
-            case 'ArrowDown':
-            case 'j':
-                if (keyboardEvent.key === 'j' && !vimModeEnabled) break;
-                keyboardEvent.preventDefault();
-                selectedIndex = (selectedIndex + 1) % filteredCommands.length;
-                break;
-            case 'ArrowUp':
-            case 'k':
-                if (keyboardEvent.key === 'k' && !vimModeEnabled) break;
-                keyboardEvent.preventDefault();
-                selectedIndex = selectedIndex - 1 < 0 
-                    ? filteredCommands.length - 1 
-                    : selectedIndex - 1;
-                break;
-            case 'Enter':
-                keyboardEvent.preventDefault();
-                if (filteredCommands[selectedIndex]) {
-                    executeCommand(filteredCommands[selectedIndex]);
-                }
-                break;
-        }
+    } else if (!show) {
+        previousShow = show;
     }
 
     function executeCommand(command: Command) {
@@ -94,26 +47,33 @@
             command.action();
         }
         show = false;
-        dispatch('close');
     }
 
-    onDestroy(() => {
-        removeKeyboardContext('commandPalette');
-    });
+    function handleSelect() {
+        if (filteredCommands[selectedIndex]) {
+            executeCommand(filteredCommands[selectedIndex]);
+        }
+    }
 </script>
 
 <BasePalette
     bind:show
     bind:searchQuery
     paletteId={paletteId}
-    placeholder="Type a command or search..."
-    on:keydown={handleKeyDown}
-    on:close
+    placeholder="Type a command..."
+    bind:selectedIndex
+    totalItems={filteredCommands.length}
+    on:select={handleSelect}
 >
-    <ResultsList {selectedIndex} isEmpty={filteredCommands.length === 0} emptyMessage="No commands found">
+    <ResultsList 
+        {selectedIndex} 
+        isEmpty={filteredCommands.length === 0}
+        emptyMessage={searchQuery ? "No commands found" : "No commands available"}
+    >
         {#each filteredCommands as command, index (command.id)}
             <CommandItem
                 {command}
+                {index}
                 selected={index === selectedIndex}
                 onClick={() => executeCommand(command)}
             />

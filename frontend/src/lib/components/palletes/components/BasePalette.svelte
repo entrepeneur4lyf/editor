@@ -8,6 +8,8 @@
         close: void;
         search: { query: string };
         keydown: KeyboardEvent;
+        selectionChange: number;
+        select: void;
     }>();
 
     export let show = false;
@@ -15,6 +17,8 @@
     export let placeholder = 'Search...';
     export let paletteId: string;
     export let autofocus = true;
+    export let totalItems = 0;
+    export let selectedIndex = 0;
 
     let inputElement: HTMLInputElement;
     let vimModeEnabled = false;
@@ -46,7 +50,37 @@
             return;
         }
 
-        dispatch('keydown', event);
+        // Handle selection navigation
+        switch(event.key) {
+            case 'ArrowDown':
+            case 'j':
+                if (event.key === 'j' && !vimModeEnabled) break;
+                event.preventDefault();
+                if (totalItems > 0) {
+                    selectedIndex = (selectedIndex + 1) % totalItems;
+                    dispatch('selectionChange', selectedIndex);
+                }
+                break;
+            case 'ArrowUp':
+            case 'k':
+                if (event.key === 'k' && !vimModeEnabled) break;
+                event.preventDefault();
+                if (totalItems > 0) {
+                    selectedIndex = selectedIndex - 1 < 0 
+                        ? totalItems - 1 
+                        : selectedIndex - 1;
+                    dispatch('selectionChange', selectedIndex);
+                }
+                break;
+            case 'Enter':
+                event.preventDefault();
+                if (totalItems > 0) {
+                    dispatch('select');
+                }
+                break;
+            default:
+                dispatch('keydown', event);
+        }
     }
 
     function handleSearchInput(event: Event) {
@@ -56,6 +90,9 @@
 
     function closePalette() {
         show = false;
+        vimModeEnabled = false;
+        selectedIndex = 0;
+        focusStore.restorePrevious();
         dispatch('close');
     }
 
@@ -66,14 +103,6 @@
     function handleClickInside(event: MouseEvent) {
         event.stopPropagation();
     }
-
-    onMount(() => {
-        window.addEventListener('keydown', handleKeyDown);
-    });
-
-    onDestroy(() => {
-        window.removeEventListener('keydown', handleKeyDown);
-    });
 </script>
 
 {#if show}
@@ -90,7 +119,7 @@
                     <Input
                         bind:value={searchQuery}
                         {placeholder}
-                        bind:this={inputElement}
+                        on:keydown={handleKeyDown}
                         {autofocus}
                         on:input={handleSearchInput}
                     />
@@ -100,7 +129,7 @@
                 </div>
             </div>
 
-            <slot />
+            <slot {selectedIndex} />
         </div>
     </button>
 {/if}

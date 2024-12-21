@@ -6,6 +6,7 @@ export interface Command {
     id: string;
     label: string;
     category?: string;
+    context?: string[];
     shortcut?: string;
     action: () => void;
 }

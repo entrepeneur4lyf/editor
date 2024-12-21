@@ -3,6 +3,7 @@
 
     export let command: Command;
     export let selected = false;
+    export let index = 0;
     export let onClick: () => void;
 </script>
 
@@ -17,7 +18,12 @@
             {#if command.category}
                 <span class="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-800 rounded">{command.category}</span>
             {/if}
-            <span class="text-xs text-gray-600">{command.context}</span>
+
+            {#if command.context}
+                {#each command.context as context}
+                    <span class="text-xs text-gray-600">{context}</span>
+                {/each}
+            {/if}
         </div>
     </div>
     {#if command.shortcut}
