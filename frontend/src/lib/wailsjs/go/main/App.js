@@ -38,6 +38,10 @@ export function GetAvailableShells() {
   return window['go']['main']['App']['GetAvailableShells']();
 }
 
+export function GetCurrentBranch(arg1) {
+  return window['go']['main']['App']['GetCurrentBranch'](arg1);
+}
+
 export function GetEditorConfig() {
   return window['go']['main']['App']['GetEditorConfig']();
 }
@@ -72,6 +76,10 @@ export function InitGitRepository(arg1) {
 
 export function IsGitRepository(arg1) {
   return window['go']['main']['App']['IsGitRepository'](arg1);
+}
+
+export function ListBranches(arg1) {
+  return window['go']['main']['App']['ListBranches'](arg1);
 }
 
 export function LoadDirectoryContents(arg1) {

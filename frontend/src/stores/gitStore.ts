@@ -1,5 +1,5 @@
 import { writable, get } from 'svelte/store';
-import { IsGitRepository, InitGitRepository, GetGitStatus, StageFile, UnstageFile, DiscardChanges, Commit } from '@/lib/wailsjs/go/main/App';
+import { IsGitRepository, InitGitRepository, GetGitStatus, StageFile, UnstageFile, DiscardChanges, Commit, ListBranches, GetCurrentBranch } from '@/lib/wailsjs/go/main/App';
 import { fileStore } from '@/stores/fileStore';
 import type { service } from '@/lib/wailsjs/go/models';
 
@@ -11,6 +11,8 @@ interface GitState {
     isLoading: boolean;
     loadingFiles: Set<string>;
     error: string | null;
+    branches: service.BranchInfo[];
+    currentBranch: string | null;
 }
 
 function createGitStore() {
@@ -21,12 +23,14 @@ function createGitStore() {
         isRepository: false,
         isLoading: true,
         loadingFiles: new Set(),
-        error: null
+        error: null,
+        branches: [],
+        currentBranch: null
     });
 
     return {
         subscribe,
-        
+
         async checkRepository() {
             try {
                 const projectPath = get(fileStore).currentProjectPath;
@@ -43,10 +47,10 @@ function createGitStore() {
                     await this.refreshStatus();
                 }
             } catch (error) {
-                update(state => ({ 
-                    ...state, 
-                    isLoading: false, 
-                    error: `Failed to check repository status: ${error.message}` 
+                update(state => ({
+                    ...state,
+                    isLoading: false,
+                    error: `Failed to check repository status: ${error}`
                 }));
             }
         },
@@ -64,17 +68,17 @@ function createGitStore() {
                 const status = await GetGitStatus(projectPath);
 
                 // Only update once we have the new data
-                update(state => ({ 
-                    ...state, 
+                update(state => ({
+                    ...state,
                     gitStatus: status,
                     isLoading: false,
-                    error: null 
+                    error: null
                 }));
             } catch (error) {
-                update(state => ({ 
-                    ...state, 
+                update(state => ({
+                    ...state,
                     isLoading: false,
-                    error: `Failed to get repository status: ${error.message}` 
+                    error: `Failed to get repository status: ${error}`
                 }));
             }
         },
@@ -89,14 +93,14 @@ function createGitStore() {
                 update(state => ({ ...state, isLoading: true, error: null }));
                 await InitGitRepository(projectPath);
                 update(state => ({ ...state, isRepository: true, isLoading: false }));
-                
+
                 // Get initial status after initialization
                 await this.refreshStatus();
             } catch (error) {
-                update(state => ({ 
-                    ...state, 
-                    isLoading: false, 
-                    error: `Failed to initialize repository: ${error.message}` 
+                update(state => ({
+                    ...state,
+                    isLoading: false,
+                    error: `Failed to initialize repository: ${error}`
                 }));
             }
         },
@@ -124,8 +128,8 @@ function createGitStore() {
                 }
 
                 // Add to loading set but keep existing status
-                update(state => ({ 
-                    ...state, 
+                update(state => ({
+                    ...state,
                     loadingFiles: new Set([...state.loadingFiles, file])
                 }));
 
@@ -133,11 +137,11 @@ function createGitStore() {
                 update(state => {
                     const gitStatus = state.gitStatus?.map(item => {
                         if (item.file === file) {
-                            return { 
-                                ...item, 
+                            return {
+                                ...item,
                                 staged: true,
                                 // Change status from '?' to 'A' for untracked files
-                                status: item.status === '?' ? 'A' : item.status 
+                                status: item.status === '?' ? 'A' : item.status
                             };
                         }
                         return item;
@@ -148,9 +152,9 @@ function createGitStore() {
                 await StageFile(projectPath, file);
                 // No need to refresh if the operation succeeded
             } catch (error) {
-                update(state => ({ 
-                    ...state, 
-                    error: `Failed to stage file: ${error.message}` 
+                update(state => ({
+                    ...state,
+                    error: `Failed to stage file: ${error}`
                 }));
                 // Only refresh if there was an error
                 await this.refreshStatus();
@@ -170,16 +174,16 @@ function createGitStore() {
                     return;
                 }
 
-                update(state => ({ 
-                    ...state, 
+                update(state => ({
+                    ...state,
                     loadingFiles: new Set([...state.loadingFiles, file])
                 }));
 
                 // Optimistically update the UI by moving the file to unstaged
                 update(state => ({
                     ...state,
-                    gitStatus: state.gitStatus.map(item => 
-                        item.file === file 
+                    gitStatus: state.gitStatus.map(item =>
+                        item.file === file
                             ? { ...item, staged: false }
                             : item
                     )
@@ -188,9 +192,9 @@ function createGitStore() {
                 await UnstageFile(projectPath, file);
                 // No need to refresh if the operation succeeded
             } catch (error) {
-                update(state => ({ 
-                    ...state, 
-                    error: `Failed to unstage file: ${error.message}` 
+                update(state => ({
+                    ...state,
+                    error: `Failed to unstage file: ${error}`
                 }));
                 // Only refresh if there was an error
                 await this.refreshStatus();
@@ -210,8 +214,8 @@ function createGitStore() {
                     return;
                 }
 
-                update(state => ({ 
-                    ...state, 
+                update(state => ({
+                    ...state,
                     loadingFiles: new Set([...state.loadingFiles, file])
                 }));
 
@@ -222,11 +226,10 @@ function createGitStore() {
                 }));
 
                 await DiscardChanges(projectPath, file);
-                // No need to refresh if the operation succeeded
             } catch (error) {
-                update(state => ({ 
-                    ...state, 
-                    error: `Failed to discard changes: ${error.message}` 
+                update(state => ({
+                    ...state,
+                    error: `Failed to discard changes: ${error}`
                 }));
                 // Only refresh if there was an error
                 await this.refreshStatus();
@@ -240,17 +243,48 @@ function createGitStore() {
         },
 
         async commit(message: string): Promise<void> {
-            const state = get(fileStore);
-            if (!state.currentProjectPath) return;
-
             try {
-                await Commit(state.currentProjectPath, message);
-                
+                const projectPath = get(fileStore).currentProjectPath;
+                if (!projectPath) {
+                    return;
+                }
+
                 // After successful commit, refresh the git status
+                update(state => ({ ...state, isLoading: true, error: null }));
+                await Commit(projectPath, message);
                 await this.refreshStatus();
             } catch (error) {
-                update(state => ({ ...state, error: `Failed to commit: ${error}` }));
-                throw error;
+                update(state => ({
+                    ...state,
+                    isLoading: false,
+                    error: `Failed to commit changes: ${error}`
+                }));
+            }
+        },
+
+        async refreshBranches() {
+            try {
+                const projectPath = get(fileStore).currentProjectPath;
+                if (!projectPath) {
+                    return;
+                }
+
+                const [branches, currentBranch] = await Promise.all([
+                    ListBranches(projectPath),
+                    GetCurrentBranch(projectPath)
+                ]);
+
+                update(state => ({
+                    ...state,
+                    branches,
+                    currentBranch,
+                    error: null
+                }));
+            } catch (error) {
+                update(state => ({
+                    ...state,
+                    error: `Failed to get branch information: ${error}`
+                }));
             }
         },
 
@@ -261,7 +295,9 @@ function createGitStore() {
             isRepository: false,
             isLoading: false,
             loadingFiles: new Set(),
-            error: null
+            error: null,
+            branches: [],
+            currentBranch: null
         })
     };
 }

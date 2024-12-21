@@ -21,6 +21,8 @@ export function DiscardChanges(arg1:string,arg2:string):Promise<void>;
 
 export function GetAvailableShells():Promise<Array<string>>;
 
+export function GetCurrentBranch(arg1:string):Promise<string>;
+
 export function GetEditorConfig():Promise<service.EditorConfig>;
 
 export function GetFileContent(arg1:string):Promise<string>;
@@ -38,6 +40,8 @@ export function HandleInput(arg1:string,arg2:Array<number>):Promise<void>;
 export function InitGitRepository(arg1:string):Promise<void>;
 
 export function IsGitRepository(arg1:string):Promise<boolean>;
+
+export function ListBranches(arg1:string):Promise<Array<service.BranchInfo>>;
 
 export function LoadDirectoryContents(arg1:string):Promise<service.FileNode>;
 

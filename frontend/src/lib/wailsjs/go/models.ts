@@ -45,6 +45,22 @@ export namespace db {
 
 export namespace service {
 	
+	export class BranchInfo {
+	    name: string;
+	    isRemote: boolean;
+	    isHead: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new BranchInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.isRemote = source["isRemote"];
+	        this.isHead = source["isHead"];
+	    }
+	}
 	export class EditorConfig {
 	    // Go type: struct { Theme string "json:\"theme\" mapstructure:\"theme\""; FontSize int "json:\"fontSize\" mapstructure:\"fontSize\""; TabSize int "json:\"tabSize\" mapstructure:\"tabSize\""; WordWrap bool "json:\"wordWrap\" mapstructure:\"wordWrap\""; LineNumbers bool "json:\"lineNumbers\" mapstructure:\"lineNumbers\""; RelativeLines bool "json:\"relativeLines\" mapstructure:\"relativeLines\""; Minimap bool "json:\"minimap\" mapstructure:\"minimap\""; StickyScroll bool "json:\"stickyScroll\" mapstructure:\"stickyScroll\""; Vim struct { Enabled bool "json:\"enabled\" mapstructure:\"enabled\""; DefaultMode string "json:\"defaultMode\" mapstructure:\"defaultMode\"" } "json:\"vim\" mapstructure:\"vim\"" }
 	    editor: any;
