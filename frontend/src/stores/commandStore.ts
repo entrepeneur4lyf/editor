@@ -1,6 +1,5 @@
 import { writable, derived } from 'svelte/store';
 import { keyBindings, formatKeybinding } from './keyboardStore';
-import type { KeyBinding } from '../types/keyboard';
 
 export interface Command {
     id: string;

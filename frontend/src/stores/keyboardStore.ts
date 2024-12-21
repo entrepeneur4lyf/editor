@@ -156,6 +156,16 @@ const defaultKeybindings: KeyBindingConfig = {
         },
         action: () => {}
     },
+    'git.showBranchPalette': {
+        defaultBinding: {
+            key: 'b',
+            modifiers: ['ctrl', 'shift'],
+            description: 'Show Branch Palette',
+            category: 'Git',
+            context: ['global']
+        },
+        action: () => {}
+    },
 
     // File Manager shortcuts
     'file.createFile': {
@@ -501,3 +511,9 @@ const defaultKeybindings: KeyBindingConfig = {
             }
         }
     }
+
+    registerCommand('git.showBranchPalette', () => {}, {
+        label: 'Git: Switch Branch',
+        category: 'Git',
+        context: ['git']
+    });
