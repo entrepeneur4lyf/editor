@@ -1,5 +1,5 @@
 import { writable, get } from 'svelte/store';
-import { IsGitRepository, InitGitRepository, GetGitStatus, StageFile, UnstageFile } from '@/lib/wailsjs/go/main/App';
+import { IsGitRepository, InitGitRepository, GetGitStatus, StageFile, UnstageFile, DiscardChanges } from '@/lib/wailsjs/go/main/App';
 import { fileStore } from '@/stores/fileStore';
 import type { service } from '@/lib/wailsjs/go/models';
 
@@ -111,7 +111,7 @@ function createGitStore() {
             gitStatus: status
         })),
 
-        stageFile: async (file: string) => {
+        async stageFile(file: string) {
             try {
                 const projectPath = get(fileStore).currentProjectPath;
                 if (!projectPath) {
@@ -122,34 +122,24 @@ function createGitStore() {
                     ...state, 
                     loadingFiles: new Set([...state.loadingFiles, file])
                 }));
-                
+
                 await StageFile(projectPath, file);
-                const status = await GetGitStatus(projectPath);
-                
-                update(state => {
-                    const newLoadingFiles = new Set(state.loadingFiles);
-                    newLoadingFiles.delete(file);
-                    return { 
-                        ...state, 
-                        gitStatus: status,
-                        loadingFiles: newLoadingFiles,
-                        error: null
-                    };
-                });
+                await this.refreshStatus();
             } catch (error) {
+                update(state => ({ 
+                    ...state, 
+                    error: `Failed to stage file: ${error.message}` 
+                }));
+            } finally {
                 update(state => {
-                    const newLoadingFiles = new Set(state.loadingFiles);
-                    newLoadingFiles.delete(file);
-                    return { 
-                        ...state, 
-                        loadingFiles: newLoadingFiles,
-                        error: `Failed to stage file: ${error.message}` 
-                    };
+                    const loadingFiles = new Set(state.loadingFiles);
+                    loadingFiles.delete(file);
+                    return { ...state, loadingFiles };
                 });
             }
         },
 
-        unstageFile: async (file: string) => {
+        async unstageFile(file: string) {
             try {
                 const projectPath = get(fileStore).currentProjectPath;
                 if (!projectPath) {
@@ -187,9 +177,32 @@ function createGitStore() {
             }
         },
 
-        discardChanges: async (file: string) => {
-            // TODO: Implement with backend
-            console.log('Discarding changes:', file);
+        async discardChanges(file: string) {
+            try {
+                const projectPath = get(fileStore).currentProjectPath;
+                if (!projectPath) {
+                    return;
+                }
+
+                update(state => ({ 
+                    ...state, 
+                    loadingFiles: new Set([...state.loadingFiles, file])
+                }));
+
+                await DiscardChanges(projectPath, file);
+                await this.refreshStatus();
+            } catch (error) {
+                update(state => ({ 
+                    ...state, 
+                    error: `Failed to discard changes: ${error.message}` 
+                }));
+            } finally {
+                update(state => {
+                    const loadingFiles = new Set(state.loadingFiles);
+                    loadingFiles.delete(file);
+                    return { ...state, loadingFiles };
+                });
+            }
         },
 
         reset: () => set({

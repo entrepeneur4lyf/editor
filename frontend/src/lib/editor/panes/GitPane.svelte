@@ -211,7 +211,7 @@
                                                     <span class="loading loading-spinner loading-xs"></span>
                                                 {:else}
                                                     {item.status}
-                                                {/if}
+                                            {/if}
                                             </span>
                                         </div>
                                     </div>
