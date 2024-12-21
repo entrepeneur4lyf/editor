@@ -1,5 +1,5 @@
 import { writable, get } from 'svelte/store';
-import { IsGitRepository, InitGitRepository, GetGitStatus } from '@/lib/wailsjs/go/main/App';
+import { IsGitRepository, InitGitRepository, GetGitStatus, StageFile, UnstageFile } from '@/lib/wailsjs/go/main/App';
 import { fileStore } from '@/stores/fileStore';
 import type { service } from '@/lib/wailsjs/go/models';
 
@@ -111,13 +111,55 @@ function createGitStore() {
         })),
 
         stageFile: async (file: string) => {
-            // TODO: Implement with backend
-            console.log('Staging file:', file);
+            try {
+                const projectPath = get(fileStore).currentProjectPath;
+                if (!projectPath) {
+                    return;
+                }
+
+                update(state => ({ ...state, isLoading: true, error: null }));
+                await StageFile(projectPath, file);
+                
+                // Refresh status after staging
+                const status = await GetGitStatus(projectPath);
+                update(state => ({ 
+                    ...state, 
+                    gitStatus: status,
+                    isLoading: false 
+                }));
+            } catch (error) {
+                update(state => ({ 
+                    ...state, 
+                    isLoading: false, 
+                    error: `Failed to stage file: ${error.message}` 
+                }));
+            }
         },
 
         unstageFile: async (file: string) => {
-            // TODO: Implement with backend
-            console.log('Unstaging file:', file);
+            try {
+                const projectPath = get(fileStore).currentProjectPath;
+                if (!projectPath) {
+                    return;
+                }
+
+                update(state => ({ ...state, isLoading: true, error: null }));
+                await UnstageFile(projectPath, file);
+                
+                // Refresh status after unstaging
+                const status = await GetGitStatus(projectPath);
+                update(state => ({ 
+                    ...state, 
+                    gitStatus: status,
+                    isLoading: false 
+                }));
+            } catch (error) {
+                update(state => ({ 
+                    ...state, 
+                    isLoading: false, 
+                    error: `Failed to unstage file: ${error.message}` 
+                }));
+            }
         },
 
         discardChanges: async (file: string) => {

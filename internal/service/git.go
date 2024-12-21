@@ -133,3 +133,47 @@ func (s *GitService) GetStatus(projectPath string) ([]FileStatus, error) {
 
 	return files, nil
 }
+
+// getWorktree is a helper function that returns the worktree for a given project path
+func (s *GitService) getWorktree(projectPath string) (*git.Worktree, error) {
+	repo, err := git.PlainOpen(projectPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	return worktree, nil
+}
+
+// StageFile adds a file to the staging area
+func (s *GitService) StageFile(projectPath string, file string) error {
+	worktree, err := s.getWorktree(projectPath)
+	if err != nil {
+		return err
+	}
+
+	_, err = worktree.Add(file)
+	if err != nil {
+		return fmt.Errorf("failed to stage file: %w", err)
+	}
+
+	return nil
+}
+
+func (s *GitService) UnstageFile(projectPath string, file string) error {
+	worktree, err := s.getWorktree(projectPath)
+	if err != nil {
+		return err
+	}
+
+	_, err = worktree.Remove(file)
+	if err != nil {
+		return fmt.Errorf("failed to unstage file: %w", err)
+	}
+
+	return nil
+}

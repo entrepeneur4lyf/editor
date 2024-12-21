@@ -172,7 +172,7 @@ func (a *App) HandleInput(id string, data []byte) error {
 
 // GetAvailableShells returns a list of available shells, with the default shell as the first item
 func (a *App) GetAvailableShells() ([]string, error) {
-    return a.terminalService.GetAvailableShells()
+	return a.terminalService.GetAvailableShells()
 }
 
 // IsGitRepository checks if the given directory is a Git repository
@@ -188,4 +188,14 @@ func (a *App) InitGitRepository(projectPath string) error {
 // GetGitStatus returns the current Git status of the repository
 func (a *App) GetGitStatus(projectPath string) ([]service.FileStatus, error) {
 	return a.git.GetStatus(projectPath)
+}
+
+// StageFile adds a file to the staging area
+func (a *App) StageFile(projectPath string, file string) error {
+	return a.git.StageFile(projectPath, file)
+}
+
+// UnstageFile removes a file from the staging area
+func (a *App) UnstageFile(projectPath string, file string) error {
+	return a.git.UnstageFile(projectPath, file)
 }

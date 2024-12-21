@@ -93,3 +93,11 @@ export function SaveFile(arg1, arg2) {
 export function SearchFiles(arg1, arg2) {
   return window['go']['main']['App']['SearchFiles'](arg1, arg2);
 }
+
+export function StageFile(arg1, arg2) {
+  return window['go']['main']['App']['StageFile'](arg1, arg2);
+}
+
+export function UnstageFile(arg1, arg2) {
+  return window['go']['main']['App']['UnstageFile'](arg1, arg2);
+}

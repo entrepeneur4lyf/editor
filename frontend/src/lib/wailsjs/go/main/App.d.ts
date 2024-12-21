@@ -48,3 +48,7 @@ export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<void
 export function SaveFile(arg1:string,arg2:string):Promise<void>;
 
 export function SearchFiles(arg1:string,arg2:string):Promise<Array<service.FileNode>>;
+
+export function StageFile(arg1:string,arg2:string):Promise<void>;
+
+export function UnstageFile(arg1:string,arg2:string):Promise<void>;
