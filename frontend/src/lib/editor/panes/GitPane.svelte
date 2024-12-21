@@ -2,11 +2,12 @@
     import {
         MoreVertical,
         GitBranch,
+        GitCommit,
         Plus,
         RefreshCw,
         Undo,
-        GitCommit,
-        Trash2
+        Trash2,
+        File
     } from 'lucide-svelte';
     import Button from '../../components/Button.svelte';
     import Input from '../../components/Input.svelte';
@@ -118,9 +119,25 @@
                         Staged Changes
                     </div>
                     {#each stagedChanges as item}
-                        <div class="flex items-center px-4 py-1 hover:bg-gray-800 cursor-pointer text-sm">
-                            <span class="text-green-500 mr-2">M</span>
-                            {item.file}
+                        <div class="flex items-center text-sm py-1 group hover:bg-gray-800 rounded-sm mx-1 hover:rounded-md">
+                            <div class="flex items-center px-2 w-full">
+                                <File class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
+                                <span 
+                                    class="text-gray-300 truncate flex-1" 
+                                    title={`${item.file} - ${item.status === 'modified' ? 'modified' : item.status === 'new' ? 'added' : 'deleted'}`}
+                                >
+                                    {item.file}
+                                </span>
+                                <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        icon={Undo}
+                                        title="Unstage Changes"
+                                    />
+                                </div>
+                                <span class="text-green-500 ml-2 w-4 text-center">{item.status === 'modified' ? 'M' : item.status === 'new' ? 'A' : 'D'}</span>
+                            </div>
                         </div>
                     {/each}
                 </div>
@@ -133,9 +150,31 @@
                         Changes
                     </div>
                     {#each unstagedChanges as item}
-                        <div class="flex items-center px-4 py-1 hover:bg-gray-800 cursor-pointer text-sm">
-                            <span class="text-yellow-500 mr-2">M</span>
-                            {item.file}
+                        <div class="flex items-center text-sm py-1 group hover:bg-gray-800 rounded-sm mx-1 hover:rounded-md">
+                            <div class="flex items-center px-2 w-full">
+                                <File class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
+                                <span 
+                                    class="text-gray-300 truncate flex-1" 
+                                    title={`${item.file} - ${item.status === 'modified' ? 'modified' : item.status === 'new' ? 'untracked' : 'deleted'}`}
+                                >
+                                    {item.file}
+                                </span>
+                                <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        icon={Plus}
+                                        title="Stage Changes"
+                                    />
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        icon={Trash2}
+                                        title="Discard Changes"
+                                    />
+                                </div>
+                                <span class="text-yellow-500 ml-2 w-4 text-center">{item.status === 'modified' ? 'M' : item.status === 'new' ? 'U' : 'D'}</span>
+                            </div>
                         </div>
                     {/each}
                 </div>
