@@ -126,9 +126,16 @@
                                                     icon={Undo}
                                                     title="Unstage Changes"
                                                     on:click={() => gitStore.unstageFile(item.file)}
+                                                    disabled={$gitStore.loadingFiles.has(item.file)}
                                                 />
                                             </div>
-                                            <span class={`ml-2 w-4 font-semibold text-center ${getStatusColor(item.status)}`}>{item.status}</span>
+                                            <span class={`ml-2 w-4 font-semibold text-center ${getStatusColor(item.status)}`}>
+                                                {#if $gitStore.loadingFiles.has(item.file)}
+                                                    <span class="loading loading-spinner loading-xs"></span>
+                                                {:else}
+                                                    {item.status}
+                                                {/if}
+                                            </span>
                                         </div>
                                     </div>
                                 {/each}
@@ -172,6 +179,7 @@
                                                     icon={Plus}
                                                     title="Stage Changes"
                                                     on:click={() => gitStore.stageFile(item.file)}
+                                                    disabled={$gitStore.loadingFiles.has(item.file)}
                                                 />
                                                 <Button
                                                     variant="ghost"
@@ -179,9 +187,16 @@
                                                     icon={Trash2}
                                                     title="Discard Changes"
                                                     on:click={() => gitStore.discardChanges(item.file)}
+                                                    disabled={$gitStore.loadingFiles.has(item.file)}
                                                 />
                                             </div>
-                                            <span class={`ml-2 w-4 text-center ${getStatusColor(item.status)}`}>{item.status}</span>
+                                            <span class={`ml-2 w-4 font-semibold text-center ${getStatusColor(item.status)}`}>
+                                                {#if $gitStore.loadingFiles.has(item.file)}
+                                                    <span class="loading loading-spinner loading-xs"></span>
+                                                {:else}
+                                                    {item.status}
+                                                {/if}
+                                            </span>
                                         </div>
                                     </div>
                                 {/each}

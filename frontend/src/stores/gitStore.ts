@@ -3,13 +3,13 @@ import { IsGitRepository, InitGitRepository, GetGitStatus, StageFile, UnstageFil
 import { fileStore } from '@/stores/fileStore';
 import type { service } from '@/lib/wailsjs/go/models';
 
-
 interface GitState {
     gitStatus: service.FileStatus[];
     stagedExpanded: boolean;
     changesExpanded: boolean;
     isRepository: boolean;
     isLoading: boolean;
+    loadingFiles: Set<string>;
     error: string | null;
 }
 
@@ -20,6 +20,7 @@ function createGitStore() {
         changesExpanded: true,
         isRepository: false,
         isLoading: true,
+        loadingFiles: new Set(),
         error: null
     });
 
@@ -117,22 +118,34 @@ function createGitStore() {
                     return;
                 }
 
-                update(state => ({ ...state, isLoading: true, error: null }));
-                await StageFile(projectPath, file);
+                update(state => ({ 
+                    ...state, 
+                    loadingFiles: new Set([...state.loadingFiles, file])
+                }));
                 
-                // Refresh status after staging
+                await StageFile(projectPath, file);
                 const status = await GetGitStatus(projectPath);
-                update(state => ({ 
-                    ...state, 
-                    gitStatus: status,
-                    isLoading: false 
-                }));
+                
+                update(state => {
+                    const newLoadingFiles = new Set(state.loadingFiles);
+                    newLoadingFiles.delete(file);
+                    return { 
+                        ...state, 
+                        gitStatus: status,
+                        loadingFiles: newLoadingFiles,
+                        error: null
+                    };
+                });
             } catch (error) {
-                update(state => ({ 
-                    ...state, 
-                    isLoading: false, 
-                    error: `Failed to stage file: ${error.message}` 
-                }));
+                update(state => {
+                    const newLoadingFiles = new Set(state.loadingFiles);
+                    newLoadingFiles.delete(file);
+                    return { 
+                        ...state, 
+                        loadingFiles: newLoadingFiles,
+                        error: `Failed to stage file: ${error.message}` 
+                    };
+                });
             }
         },
 
@@ -143,22 +156,34 @@ function createGitStore() {
                     return;
                 }
 
-                update(state => ({ ...state, isLoading: true, error: null }));
-                await UnstageFile(projectPath, file);
+                update(state => ({ 
+                    ...state, 
+                    loadingFiles: new Set([...state.loadingFiles, file])
+                }));
                 
-                // Refresh status after unstaging
+                await UnstageFile(projectPath, file);
                 const status = await GetGitStatus(projectPath);
-                update(state => ({ 
-                    ...state, 
-                    gitStatus: status,
-                    isLoading: false 
-                }));
+                
+                update(state => {
+                    const newLoadingFiles = new Set(state.loadingFiles);
+                    newLoadingFiles.delete(file);
+                    return { 
+                        ...state, 
+                        gitStatus: status,
+                        loadingFiles: newLoadingFiles,
+                        error: null
+                    };
+                });
             } catch (error) {
-                update(state => ({ 
-                    ...state, 
-                    isLoading: false, 
-                    error: `Failed to unstage file: ${error.message}` 
-                }));
+                update(state => {
+                    const newLoadingFiles = new Set(state.loadingFiles);
+                    newLoadingFiles.delete(file);
+                    return { 
+                        ...state, 
+                        loadingFiles: newLoadingFiles,
+                        error: `Failed to unstage file: ${error.message}` 
+                    };
+                });
             }
         },
 
@@ -173,6 +198,7 @@ function createGitStore() {
             changesExpanded: true,
             isRepository: false,
             isLoading: false,
+            loadingFiles: new Set(),
             error: null
         })
     };
