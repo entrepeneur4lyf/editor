@@ -35,6 +35,7 @@ type CommitInfo struct {
 	AuthorEmail string    `json:"authorEmail"`
 	Date        time.Time `json:"date"`
 	ParentHashes []string `json:"parentHashes"`
+	HasMore      bool     `json:"hasMore"` // Indicates if there are more commits after this one
 }
 
 // CommitFilter contains options for filtering commits
@@ -443,6 +444,7 @@ func (s *GitService) ListCommits(projectPath string, filter CommitFilter) ([]Com
 	var commits []CommitInfo
 	var skipped int
 	var foundOffsetHash bool = filter.OffsetHash == "" // If no offset hash specified, we start collecting immediately
+	var hasMoreCommits bool = false
 
 	err = commitIter.ForEach(func(c *object.Commit) error {
 		// Handle hash-based offset
@@ -483,14 +485,22 @@ func (s *GitService) ListCommits(projectPath string, filter CommitFilter) ([]Com
 			parentHashes[i] = hash.String()
 		}
 
+		// Check if we've reached one before the limit
+		if filter.Limit > 0 && len(commits) == filter.Limit-1 {
+			// We found one more commit, so there are more after the current batch
+			hasMoreCommits = true
+			return errors.New("stop iteration")
+		}
+
 		// Add commit to results
 		commits = append(commits, CommitInfo{
-			Hash:        c.Hash.String(),
-			Message:     strings.TrimSpace(c.Message),
-			Author:      c.Author.Name,
-			AuthorEmail: c.Author.Email,
-			Date:        c.Author.When,
+			Hash:         c.Hash.String(),
+			Message:      strings.TrimSpace(c.Message),
+			Author:       c.Author.Name,
+			AuthorEmail:  c.Author.Email,
+			Date:         c.Author.When,
 			ParentHashes: parentHashes,
+			HasMore:      true, // Will be updated after the loop
 		})
 
 		// Check if we've reached the limit
@@ -506,9 +516,12 @@ func (s *GitService) ListCommits(projectPath string, filter CommitFilter) ([]Com
 		return nil, fmt.Errorf("failed to iterate commits: %w", err)
 	}
 
-	// If we were looking for an offset hash but didn't find it
-	if filter.OffsetHash != "" && !foundOffsetHash {
-		return nil, fmt.Errorf("offset hash %s not found in commit history", filter.OffsetHash)
+	// Update HasMore for the last commit
+	if len(commits) > 0 {
+		lastIdx := len(commits) - 1
+		for i := range commits {
+			commits[i].HasMore = i < lastIdx || hasMoreCommits
+		}
 	}
 
 	return commits, nil

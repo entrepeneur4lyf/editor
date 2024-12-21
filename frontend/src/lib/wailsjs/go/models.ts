@@ -117,6 +117,7 @@ export namespace service {
 	    // Go type: time
 	    date: any;
 	    parentHashes: string[];
+	    hasMore: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new CommitInfo(source);
@@ -130,6 +131,7 @@ export namespace service {
 	        this.authorEmail = source["authorEmail"];
 	        this.date = this.convertValues(source["date"], null);
 	        this.parentHashes = source["parentHashes"];
+	        this.hasMore = source["hasMore"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

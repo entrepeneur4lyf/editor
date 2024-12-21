@@ -339,8 +339,11 @@ function createGitStore() {
 
             update(state => ({ ...state, commitsLoading: true, commitsError: null }));
             try {
-                const commits = await ListCommitsAfter(projectPath, offsetHash, limit);
-                update(state => ({ ...state, commits }));
+                const newCommits = await ListCommitsAfter(projectPath, offsetHash, limit);
+                update(state => ({ 
+                    ...state, 
+                    commits: [...state.commits, ...newCommits]
+                }));
             } catch (error) {
                 update(state => ({ ...state, commitsError: error.message }));
             } finally {
