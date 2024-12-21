@@ -58,18 +58,23 @@ function createGitStore() {
                     return;
                 }
 
+                // Don't clear the list immediately, just set loading state
                 update(state => ({ ...state, isLoading: true, error: null }));
+
                 const status = await GetGitStatus(projectPath);
+
+                // Only update once we have the new data
                 update(state => ({ 
                     ...state, 
                     gitStatus: status,
-                    isLoading: false 
+                    isLoading: false,
+                    error: null 
                 }));
             } catch (error) {
                 update(state => ({ 
                     ...state, 
-                    isLoading: false, 
-                    error: `Failed to get Git status: ${error.message}` 
+                    isLoading: false,
+                    error: `Failed to get repository status: ${error.message}` 
                 }));
             }
         },
@@ -118,18 +123,31 @@ function createGitStore() {
                     return;
                 }
 
+                // Add to loading set but keep existing status
                 update(state => ({ 
                     ...state, 
                     loadingFiles: new Set([...state.loadingFiles, file])
                 }));
 
+                // Optimistically update the UI by moving the file to staged
+                update(state => ({
+                    ...state,
+                    gitStatus: state.gitStatus.map(item => 
+                        item.file === file 
+                            ? { ...item, staged: true }
+                            : item
+                    )
+                }));
+
                 await StageFile(projectPath, file);
-                await this.refreshStatus();
+                // No need to refresh if the operation succeeded
             } catch (error) {
                 update(state => ({ 
                     ...state, 
                     error: `Failed to stage file: ${error.message}` 
                 }));
+                // Only refresh if there was an error
+                await this.refreshStatus();
             } finally {
                 update(state => {
                     const loadingFiles = new Set(state.loadingFiles);
@@ -150,29 +168,31 @@ function createGitStore() {
                     ...state, 
                     loadingFiles: new Set([...state.loadingFiles, file])
                 }));
-                
+
+                // Optimistically update the UI by moving the file to unstaged
+                update(state => ({
+                    ...state,
+                    gitStatus: state.gitStatus.map(item => 
+                        item.file === file 
+                            ? { ...item, staged: false }
+                            : item
+                    )
+                }));
+
                 await UnstageFile(projectPath, file);
-                const status = await GetGitStatus(projectPath);
-                
-                update(state => {
-                    const newLoadingFiles = new Set(state.loadingFiles);
-                    newLoadingFiles.delete(file);
-                    return { 
-                        ...state, 
-                        gitStatus: status,
-                        loadingFiles: newLoadingFiles,
-                        error: null
-                    };
-                });
+                // No need to refresh if the operation succeeded
             } catch (error) {
+                update(state => ({ 
+                    ...state, 
+                    error: `Failed to unstage file: ${error.message}` 
+                }));
+                // Only refresh if there was an error
+                await this.refreshStatus();
+            } finally {
                 update(state => {
-                    const newLoadingFiles = new Set(state.loadingFiles);
-                    newLoadingFiles.delete(file);
-                    return { 
-                        ...state, 
-                        loadingFiles: newLoadingFiles,
-                        error: `Failed to unstage file: ${error.message}` 
-                    };
+                    const loadingFiles = new Set(state.loadingFiles);
+                    loadingFiles.delete(file);
+                    return { ...state, loadingFiles };
                 });
             }
         },
@@ -189,13 +209,21 @@ function createGitStore() {
                     loadingFiles: new Set([...state.loadingFiles, file])
                 }));
 
+                // Optimistically update the UI by removing the file from the list
+                update(state => ({
+                    ...state,
+                    gitStatus: state.gitStatus.filter(item => item.file !== file)
+                }));
+
                 await DiscardChanges(projectPath, file);
-                await this.refreshStatus();
+                // No need to refresh if the operation succeeded
             } catch (error) {
                 update(state => ({ 
                     ...state, 
                     error: `Failed to discard changes: ${error.message}` 
                 }));
+                // Only refresh if there was an error
+                await this.refreshStatus();
             } finally {
                 update(state => {
                     const loadingFiles = new Set(state.loadingFiles);
