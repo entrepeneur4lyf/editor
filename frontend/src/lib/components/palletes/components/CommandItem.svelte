@@ -3,16 +3,21 @@
 
     export let command: Command;
     export let selected = false;
+    export let onClick: () => void;
 </script>
 
-<div class="flex items-center justify-between w-full">
+<button
+    class="w-full px-4 py-2 flex items-center justify-between text-left hover:bg-gray-800 
+        {selected ? 'bg-gray-800' : ''}"
+    on:click={onClick}
+>
     <div class="flex items-center space-x-2">
         <span class="text-gray-300">{command.label}</span>
         <div class="flex items-center gap-2">
             {#if command.category}
                 <span class="text-xs text-gray-500 px-1.5 py-0.5 bg-gray-800 rounded">{command.category}</span>
             {/if}
-            <span class="text-xs text-gray-600">{command.category}</span>
+            <span class="text-xs text-gray-600">{command.context}</span>
         </div>
     </div>
     {#if command.shortcut}
@@ -22,4 +27,4 @@
             </span>
         </div>
     {/if}
-</div>
+</button>

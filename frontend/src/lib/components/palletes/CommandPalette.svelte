@@ -110,10 +110,13 @@
     on:keydown={handleKeyDown}
     on:close
 >
-    <ResultsList
-        results={filteredCommands}
-        {selectedIndex}
-        ItemComponent={CommandItem}
-        on:select={({ detail }) => executeCommand(detail)}
-    />
+    <ResultsList {selectedIndex} isEmpty={filteredCommands.length === 0} emptyMessage="No commands found">
+        {#each filteredCommands as command, index (command.id)}
+            <CommandItem
+                {command}
+                selected={index === selectedIndex}
+                onClick={() => executeCommand(command)}
+            />
+        {/each}
+    </ResultsList>
 </BasePalette>
