@@ -13,56 +13,29 @@
     } from 'lucide-svelte';
     import Button from '../../components/Button.svelte';
     import Input from '../../components/Input.svelte';
-    import DropdownMenu from '../../components/DropdownMenu.svelte';
-    import type { GitStatusItem } from '@/types';
-
-    // Mock data for now - will be replaced with actual git integration
-    const gitStatus: GitStatusItem[] = [
-        { status: 'modified', file: 'src/App.tsx', staged: true },
-        { status: 'new', file: 'src/LeftSidebar.tsx', staged: false }
-    ];
+    import { gitStore } from '@/stores/gitStore';
+    import type { GitStatusItem } from '@/stores/gitStore';
 
     let commitMessage = '';
-    $: stagedChanges = gitStatus.filter(item => item.staged);
-    $: unstagedChanges = gitStatus.filter(item => !item.staged);
 
-    let stagedExpanded = true;
-    let changesExpanded = true;
+    // Subscribe to gitStore
+    $: stagedChanges = $gitStore.gitStatus.filter(item => item.staged);
+    $: unstagedChanges = $gitStore.gitStatus.filter(item => !item.staged);
+    $: stagedExpanded = $gitStore.stagedExpanded;
+    $: changesExpanded = $gitStore.changesExpanded;
 
     function handleCommit() {
         // Implement commit functionality
         commitMessage = '';
     }
 
-    function handleStageAll() {
-        // Implement stage all functionality
+    // Mock data - Replace with actual Git integration later
+    $: if (!$gitStore.gitStatus.length) {
+        gitStore.setGitStatus([
+            { status: 'modified', file: 'src/App.tsx', staged: true },
+            { status: 'new', file: 'src/LeftSidebar.tsx', staged: false }
+        ]);
     }
-
-    function handleUnstageAll() {
-        // Implement unstage all functionality
-    }
-
-    function handleDiscardAll() {
-        // Implement discard all functionality
-    }
-
-    // Mock data for commits - replace with actual git log data
-    const recentCommits = [
-        {
-            hash: 'abc1234',
-            message: 'feat: Add source control panel',
-            author: 'John Doe',
-            date: '2 hours ago',
-            files: ['src/lib/editor/LeftSidebar.svelte', 'src/lib/editor/Editor.svelte']
-        },
-        {
-            hash: 'def5678',
-            message: 'fix: Resolve sidebar collapse issues',
-            author: 'Jane Smith',
-            date: '3 hours ago',
-            files: ['src/lib/editor/LeftSidebar.svelte']
-        }
-    ];
 </script>
 
 <div class="flex flex-col h-full">
@@ -77,7 +50,7 @@
                 size="sm"
                 icon={Plus}
                 title="Stage All Changes"
-                on:click={handleStageAll}
+                on:click={() => gitStore.stageAll()}
             />
             <Button
                 variant="ghost"
@@ -96,17 +69,17 @@
                         {
                             label: 'Stage All Changes',
                             icon: Plus,
-                            onClick: handleStageAll
+                            onClick: () => gitStore.stageAll()
                         },
                         {
                             label: 'Unstage All Changes',
                             icon: Undo,
-                            onClick: handleUnstageAll
+                            onClick: () => gitStore.unstageAll()
                         },
                         {
                             label: 'Discard All Changes',
                             icon: Trash2,
-                            onClick: handleDiscardAll,
+                            onClick: () => gitStore.discardAll(),
                             danger: true
                         }
                     ]}
@@ -122,7 +95,7 @@
                 <div class="mb-4">
                     <div 
                         class="flex items-center text-sm text-gray-500 mb-1 px-2 cursor-pointer hover:text-gray-400"
-                        on:click={() => stagedExpanded = !stagedExpanded}
+                        on:click={() => gitStore.toggleStaged()}
                     >
                         <span class="w-4 h-4 flex items-center justify-center">
                             {#if stagedExpanded}
@@ -151,6 +124,7 @@
                                                 size="sm"
                                                 icon={Undo}
                                                 title="Unstage Changes"
+                                                on:click={() => gitStore.unstageFile(item.file)}
                                             />
                                         </div>
                                         <span class="text-green-500 ml-2 w-4 text-center">{item.status === 'modified' ? 'M' : item.status === 'new' ? 'A' : 'D'}</span>
@@ -167,7 +141,7 @@
                 <div class="mb-4">
                     <div 
                         class="flex items-center text-sm text-gray-500 mb-1 px-2 cursor-pointer hover:text-gray-400"
-                        on:click={() => changesExpanded = !changesExpanded}
+                        on:click={() => gitStore.toggleChanges()}
                     >
                         <span class="w-4 h-4 flex items-center justify-center">
                             {#if changesExpanded}
@@ -196,12 +170,14 @@
                                                 size="sm"
                                                 icon={Plus}
                                                 title="Stage Changes"
+                                                on:click={() => gitStore.stageFile(item.file)}
                                             />
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 icon={Trash2}
                                                 title="Discard Changes"
+                                                on:click={() => gitStore.discardChanges(item.file)}
                                             />
                                         </div>
                                         <span class="text-yellow-500 ml-2 w-4 text-center">{item.status === 'modified' ? 'M' : item.status === 'new' ? 'U' : 'D'}</span>
