@@ -25,6 +25,18 @@
     $: stagedChanges = $gitStore.gitStatus?.filter(item => item.staged) || [];
     $: unstagedChanges = $gitStore.gitStatus?.filter(item => !item.staged) || [];
 
+    // Refresh both status and branches
+    async function refreshAll() {
+        await Promise.all([
+            gitStore.refreshStatus(),
+            gitStore.refreshBranches()
+        ]);
+    }
+
+    onMount(async () => {
+        await refreshAll();
+    });
+
     // Status color mapping
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -62,9 +74,6 @@
         }
     }
 
-    onMount(() => {
-        gitStore.checkRepository();
-    });
 </script>
 
 {#if $gitStore.isLoading}
@@ -106,7 +115,7 @@
                     size="sm"
                     icon={RefreshCw}
                     title="Refresh"
-                    on:click={() => gitStore.refreshStatus()}
+                    on:click={() => refreshAll()}
                     disabled={$gitStore.isLoading}
                 />
             </div>
