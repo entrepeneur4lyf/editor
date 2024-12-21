@@ -1,11 +1,15 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
+    import { createEventDispatcher } from 'svelte';
     import BasePalette from './components/BasePalette.svelte';
     import CommandItem from './components/CommandItem.svelte';
     import ResultsList from './components/ResultsList.svelte';
     import { commandStore } from '@/stores/commandStore';
     import { focusStore } from '@/stores/focusStore';
-    import type { Command } from '@/types/command';
+    import type { Command } from '@/stores/commandStore';
+
+    const dispatch = createEventDispatcher<{
+        close: void;
+    }>();
 
     export let show = false;
     export let searchQuery = '';
@@ -16,10 +20,12 @@
 
     $: {
         if (searchQuery.trim() === '') {
-            filteredCommands = $commandStore;
+            filteredCommands = $commandStore.filter(cmd => cmd.id !== 'command.showCommandPalette');
         } else {
             const query = searchQuery.toLowerCase();
             filteredCommands = $commandStore.filter(command => {
+                if (command.id === 'command.showCommandPalette') return false;
+                
                 const label = command.label.toLowerCase();
                 const category = command.category?.toLowerCase() || '';
                 const context = command.context?.join(' ').toLowerCase() || '';
@@ -42,17 +48,22 @@
         previousShow = show;
     }
 
-    function executeCommand(command: Command) {
-        if (command.action) {
-            command.action();
-        }
+    async function executeCommand(command: Command) {
         show = false;
+        dispatch('close');
+        if (command.action) {
+            await Promise.resolve(command.action());
+        }
     }
 
     function handleSelect() {
         if (filteredCommands[selectedIndex]) {
             executeCommand(filteredCommands[selectedIndex]);
         }
+    }
+
+    function handleClose() {
+        dispatch('close');
     }
 </script>
 
@@ -64,6 +75,7 @@
     bind:selectedIndex
     totalItems={filteredCommands.length}
     on:select={handleSelect}
+    on:close={handleClose}
 >
     <ResultsList 
         {selectedIndex} 

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+    import { createEventDispatcher } from 'svelte';
     import { Search } from 'lucide-svelte';
     import Input from '../../Input.svelte';
     import { focusStore } from '@/stores/focusStore';
@@ -105,6 +105,8 @@
     }
 </script>
 
+<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 {#if show}
     <button 
         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center pt-[20vh]"
