@@ -38,6 +38,10 @@ export function GetFileContent(arg1) {
   return window['go']['main']['App']['GetFileContent'](arg1);
 }
 
+export function GetGitStatus(arg1) {
+  return window['go']['main']['App']['GetGitStatus'](arg1);
+}
+
 export function GetProjectFiles(arg1) {
   return window['go']['main']['App']['GetProjectFiles'](arg1);
 }

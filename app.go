@@ -184,3 +184,8 @@ func (a *App) IsGitRepository(projectPath string) (bool, error) {
 func (a *App) InitGitRepository(projectPath string) error {
 	return a.git.InitRepository(projectPath)
 }
+
+// GetGitStatus returns the current Git status of the repository
+func (a *App) GetGitStatus(projectPath string) ([]service.FileStatus, error) {
+	return a.git.GetStatus(projectPath)
+}

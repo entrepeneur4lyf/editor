@@ -124,6 +124,22 @@ export namespace service {
 		    return a;
 		}
 	}
+	export class FileStatus {
+	    file: string;
+	    status: string;
+	    staged: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.file = source["file"];
+	        this.status = source["status"];
+	        this.staged = source["staged"];
+	    }
+	}
 	export class KeyBinding {
 	    key: string;
 	    modifiers: string[];
