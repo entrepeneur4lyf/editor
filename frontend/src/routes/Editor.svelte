@@ -128,6 +128,29 @@
         }
     }
 
+    function toggleSourceControl() {
+        isSourceControlActive = !isSourceControlActive;
+        if (isSourceControlActive) {
+            leftSidebarState.activeSection = 'git';
+            leftSidebarState.collapsed = false;
+            isExplorerActive = false;
+        } else {
+            leftSidebarState.activeSection = 'files';
+        }
+    }
+
+    function toggleExplorer() {
+        isExplorerActive = !isExplorerActive;
+        if (isExplorerActive) {
+            leftSidebarState.activeSection = 'files';
+            leftSidebarState.collapsed = false;
+            isSourceControlActive = false;
+        } else {
+            // When deactivating explorer, we don't switch to another view
+            leftSidebarState.collapsed = true;
+        }
+    }
+
     onMount(() => {
         const state = get(projectStore);
         if (state.currentProject?.Path) {
@@ -175,13 +198,13 @@
     <Topbar 
         bind:isLeftSidebarCollapsed={leftSidebarState.collapsed}
         bind:isRightSidebarCollapsed={rightSidebarCollapsed}
+        onToggleSourceControl={toggleSourceControl}
         bind:isSourceControlActive
         bind:isExplorerActive
         {modifiedFilesCount}
         onToggleLeftSidebar={() => leftSidebarState.collapsed = !leftSidebarState.collapsed}
         onToggleRightSidebar={() => rightSidebarCollapsed = !rightSidebarCollapsed}
-        onToggleSourceControl={() => isSourceControlActive = !isSourceControlActive}
-        onToggleExplorer={() => isExplorerActive = !isExplorerActive}
+        onToggleExplorer={toggleExplorer}
         showCommandPalette={() => showCommandPalette = true}
         showFileFinder={() => showFileFinder = true}
     />
