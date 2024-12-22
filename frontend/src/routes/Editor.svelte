@@ -4,7 +4,7 @@
     import type { SidebarState } from "@/types/ui";
     import LeftSidebar from "@/lib/editor/LeftSidebar.svelte";
     import RightSidebar from "@/lib/editor/RightSidebar.svelte";
-    import ResizeHandle from "@/lib/editor/ResizeHandle.svelte";
+    import ResizeHandle from "@/lib/components/ResizeHandle.svelte";
     import Topbar from "@/lib/editor/Topbar.svelte";
     import BottomBar from "@/lib/editor/BottomBar.svelte";
     import { fileStore } from '@/stores/fileStore';
@@ -12,7 +12,7 @@
     import { gitStore } from '@/stores/gitStore';
     import { registerCommand, setKeyboardContext } from '@/stores/keyboardStore';
     import { get } from 'svelte/store';
-    import MonacoEditor from "@/lib/editor/MonacoEditor.svelte";
+    import MonacoEditor from "@/lib/editor/core/MonacoEditor.svelte";
     import FileFinderPallete from "@/lib/components/palletes/FileFinderPallete.svelte";
     import GitCommitPallete from "@/lib/components/palletes/GitCommitPallete.svelte";
     import Modal from "@/lib/components/Modal.svelte";
