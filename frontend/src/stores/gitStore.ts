@@ -559,7 +559,8 @@ function createGitStore() {
             }
         },
 
-        async selectFile(file: string, staged: boolean) {
+        // Load the diff for the selected file
+        async getDiff(file: string, staged: boolean) {
             update(state => ({
                 ...state,
                 selectedFile: file,
@@ -575,6 +576,7 @@ function createGitStore() {
                 }
 
                 const diff = await GetFileDiff(projectPath, file, staged);
+                console.log(JSON.stringify(diff, null, 2));
                 update(state => ({
                     ...state,
                     fileDiff: diff,

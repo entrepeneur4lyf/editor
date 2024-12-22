@@ -588,7 +588,7 @@ func (s *GitService) GetHeadCommit(projectPath string) (*CommitInfo, error) {
 
 	head, err := repo.Head()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get HEAD: %w", err)
+		return nil, fmt.Errorf("failed to get HEAD reference: %w", err)
 	}
 
 	commit, err := repo.CommitObject(head.Hash())
@@ -636,7 +636,47 @@ func (s *GitService) GetFileDiff(projectPath string, filePath string, staged boo
 		return nil, fmt.Errorf("cannot get staged diff for untracked file")
 	}
 
-	// Check if file is binary
+	// Handle deleted files
+	if fileStatus.Worktree == git.Deleted || fileStatus.Staging == git.Deleted {
+		head, err := repo.Head()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get HEAD: %w", err)
+		}
+
+		commit, err := repo.CommitObject(head.Hash())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get commit: %w", err)
+		}
+
+		tree, err := commit.Tree()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get tree: %w", err)
+		}
+
+		file, err := tree.File(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get file from HEAD: %w", err)
+		}
+
+		content, err := file.Contents()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get file contents: %w", err)
+		}
+
+		diff, stats, err := s.generateDiff(content, "", filePath)
+		if err != nil {
+			return nil, err
+		}
+
+		return &FileDiff{
+			Path:     filePath,
+			Content:  diff,
+			Stats:    stats,
+			IsBinary: false,
+		}, nil
+	}
+
+	// Check if file is binary (only for non-deleted files)
 	fullPath := filepath.Join(projectPath, filePath)
 	isBinary, err := isFileBinary(fullPath)
 	if err != nil {
@@ -710,8 +750,9 @@ func (s *GitService) getStagedDiff(repo *git.Repository, worktree *git.Worktree,
 		}
 	}
 
-	// Get new content from index
-	if indexState.File(filePath).Staging == git.Added {
+	// Get new content from index for Added or Modified files
+	fileStatus := indexState.File(filePath)
+	if fileStatus.Staging == git.Added || fileStatus.Staging == git.Modified {
 		newContent, err = s.getFileContents(filepath.Join(worktree.Filesystem.Root(), filePath))
 		if err != nil {
 			return "", DiffStats{}, fmt.Errorf("failed to get index file contents: %w", err)
@@ -793,8 +834,32 @@ func (s *GitService) getDiffWithEmpty(worktree *git.Worktree, filePath string, s
 
 // generateDiff creates a unified diff from old and new content
 func (s *GitService) generateDiff(oldContent, newContent, filePath string) (string, DiffStats, error) {
-	// Calculate diffs using go-git/go-diff
-    diffs := diff.Do(oldContent, newContent)
+    // For deleted files, show all lines as deleted
+    if newContent == "" && oldContent != "" {
+        lines := strings.Split(strings.TrimSuffix(oldContent, "\n"), "\n")
+        stats := DiffStats{
+            Deleted: len(lines),
+        }
+        var diffOutput strings.Builder
+        
+        // Write diff header
+        fmt.Fprintf(&diffOutput, "--- a/%s\n+++ b/%s\n", filePath, filePath)
+        fmt.Fprintf(&diffOutput, "@@ -1,%d +0,0 @@\n", len(lines))
+        
+        // Show each line as deleted
+        for _, line := range lines {
+            fmt.Fprintf(&diffOutput, "-%s\n", line)
+        }
+        
+        return diffOutput.String(), stats, nil
+    }
+
+    // Normalize line endings and split into lines
+    oldLines := strings.Split(strings.TrimSuffix(oldContent, "\n"), "\n")
+    newLines := strings.Split(strings.TrimSuffix(newContent, "\n"), "\n")
+
+    // Calculate diffs using go-git/go-diff
+    diffs := diff.Do(strings.Join(oldLines, "\n"), strings.Join(newLines, "\n"))
 
     stats := DiffStats{}
     var diffOutput strings.Builder
@@ -806,13 +871,22 @@ func (s *GitService) generateDiff(oldContent, newContent, filePath string) (stri
     for _, d := range diffs {
         switch d.Type {
         case diffmatchpatch.DiffDelete:
-            stats.Deleted += strings.Count(d.Text, "\n") + 1
-            fmt.Fprintf(&diffOutput, "-%s", d.Text)
+            lines := strings.Split(strings.TrimSuffix(d.Text, "\n"), "\n")
+            stats.Deleted += len(lines)
+            for _, line := range lines {
+                fmt.Fprintf(&diffOutput, "-%s\n", line)
+            }
         case diffmatchpatch.DiffInsert:
-            stats.Added += strings.Count(d.Text, "\n") + 1
-            fmt.Fprintf(&diffOutput, "+%s", d.Text)
+            lines := strings.Split(strings.TrimSuffix(d.Text, "\n"), "\n")
+            stats.Added += len(lines)
+            for _, line := range lines {
+                fmt.Fprintf(&diffOutput, "+%s\n", line)
+            }
         case diffmatchpatch.DiffEqual:
-            fmt.Fprintf(&diffOutput, " %s", d.Text)
+            lines := strings.Split(strings.TrimSuffix(d.Text, "\n"), "\n")
+            for _, line := range lines {
+                fmt.Fprintf(&diffOutput, " %s\n", line)
+            }
         }
     }
 
