@@ -8,14 +8,6 @@
     import GitUnstagedChanges from "../git/GitUnstagedChanges.svelte";
     import GitCommitSection from "../git/GitCommitSection.svelte";
 
-    // Refresh both status and branches
-    async function refreshAll() {
-        await Promise.all([
-            gitStore.refreshStatus(),
-            gitStore.refreshBranches(),
-        ]);
-    }
-
     onMount(async () => {
         await gitStore.checkRepository();
     });
@@ -24,7 +16,7 @@
 <div class="flex flex-col h-full">
     <div class="flex items-center justify-between h-[35px] px-4 border-b border-gray-800">
         <div class="flex items-center space-x-2">
-            {#if $gitStore.isLoading}
+            {#if $gitStore.isLoading || $gitStore.isQuickRefreshing}
                 <Loader class="w-4 h-4 text-gray-500 animate-spin" />
             {:else}
                 <GitBranch size={16} />
@@ -37,8 +29,8 @@
                 size="sm"
                 icon={RefreshCw}
                 title="Refresh"
-                on:click={() => refreshAll()}
-                disabled={$gitStore.isLoading}
+                on:click={() => gitStore.quickRefresh()}
+                disabled={$gitStore.isQuickRefreshing || $gitStore.isLoading}
             />
         </div>
     </div>

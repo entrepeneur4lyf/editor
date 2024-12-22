@@ -13,7 +13,8 @@ import {
     ListCommitsAfter,
     ListCommitsByBranch,
     ListCommitsByAuthor,
-    SearchCommits
+    SearchCommits,
+    GetHeadCommit
 } from '@/lib/wailsjs/go/main/App';
 import { fileStore } from '@/stores/fileStore';
 import type { service } from '@/lib/wailsjs/go/models';
@@ -24,6 +25,7 @@ interface GitState {
     changesExpanded: boolean;
     isRepository: boolean;
     isLoading: boolean;
+    isQuickRefreshing: boolean;
     loadingFiles: Set<string>;
     error: string | null;
     branches: service.BranchInfo[];
@@ -42,6 +44,7 @@ function createGitStore() {
         changesExpanded: true,
         isRepository: false,
         isLoading: true,
+        isQuickRefreshing: false,
         loadingFiles: new Set(),
         error: null,
         branches: [],
@@ -123,7 +126,40 @@ function createGitStore() {
             }
         },
 
-        async refreshStatus() {
+        async quickRefresh() {
+            try {
+                const projectPath = get(fileStore).currentProjectPath;
+                if (!projectPath) {
+                    return;
+                }
+
+                update(state => ({ ...state, isQuickRefreshing: true }));
+
+                const oldHEAD = get(this).HEAD;
+
+                // Run all refreshes in parallel
+                await Promise.all([
+                    this.getHeadCommit(),
+                    this.refreshStatus(true)
+                ]);
+
+                // Check if HEAD changed
+                const currentState = get(this);
+                if (oldHEAD?.hash !== currentState.HEAD?.hash) {
+                    await this.loadInitialCommits();
+                }
+
+                update(state => ({ ...state, isQuickRefreshing: false }));
+            } catch (error) {
+                update(state => ({ 
+                    ...state, 
+                    isQuickRefreshing: false,
+                    error: `Failed to refresh: ${error}` 
+                }));
+            }
+        },
+
+        async refreshStatus(isQuickRefresh = false) {
             try {
                 const projectPath = get(fileStore).currentProjectPath;
                 if (!projectPath) {
@@ -131,7 +167,11 @@ function createGitStore() {
                 }
 
                 // Don't clear the list immediately, just set loading state
-                update(state => ({ ...state, isLoading: true, error: null }));
+                if (isQuickRefresh) {
+                    update(state => ({ ...state, isQuickRefreshing: true, error: null }));
+                } else {
+                    update(state => ({ ...state, isLoading: true, error: null }));
+                }
 
                 const status = await GetGitStatus(projectPath);
 
@@ -490,6 +530,21 @@ function createGitStore() {
             }
         },
 
+        async getHeadCommit() {
+            const projectPath = get(fileStore).currentProjectPath;
+            if (!projectPath) {
+                return;
+            }
+
+            try {
+                const head = await GetHeadCommit(projectPath);
+                update(state => ({ ...state, HEAD: head }));
+                return head;
+            } catch (error) {
+                console.error('Failed to get head commit:', error);
+            }
+        },
+
         reset() {
             set({
                 gitStatus: [],
@@ -497,6 +552,7 @@ function createGitStore() {
                 changesExpanded: true,
                 isRepository: false,
                 isLoading: false,
+                isQuickRefreshing: false,
                 loadingFiles: new Set(),
                 error: null,
                 branches: [],
