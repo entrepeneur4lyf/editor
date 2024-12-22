@@ -244,3 +244,8 @@ func (a *App) ListCommitsByAuthor(projectPath string, author string, limit int) 
 func (a *App) SearchCommits(projectPath string, query string, limit int) ([]service.CommitInfo, error) {
 	return a.git.SearchCommits(projectPath, query, limit)
 }
+
+// GetHeadCommit returns the head commit of the repository
+func (a *App) GetHeadCommit(projectPath string) (*service.CommitInfo, error) {
+	return a.git.GetHeadCommit(projectPath)
+}

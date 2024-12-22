@@ -29,13 +29,13 @@ type BranchInfo struct {
 
 // CommitInfo represents information about a Git commit
 type CommitInfo struct {
-	Hash        string    `json:"hash"`
-	Message     string    `json:"message"`
-	Author      string    `json:"author"`
-	AuthorEmail string    `json:"authorEmail"`
-	Date        time.Time `json:"date"`
-	ParentHashes []string `json:"parentHashes"`
-	HasMore      bool     `json:"hasMore"` // Indicates if there are more commits after this one
+	Hash         string    `json:"hash"`
+	Message      string    `json:"message"`
+	Author       string    `json:"author"`
+	AuthorEmail  string    `json:"authorEmail"`
+	Date         time.Time `json:"date"`
+	ParentHashes []string  `json:"parentHashes"`
+	HasMore      bool      `json:"hasMore"` // Indicates if there are more commits after this one
 }
 
 // CommitFilter contains options for filtering commits
@@ -531,7 +531,7 @@ func (s *GitService) ListCommits(projectPath string, filter CommitFilter) ([]Com
 func (s *GitService) ListCommitsAfter(projectPath string, offsetHash string, limit int) ([]CommitInfo, error) {
 	return s.ListCommits(projectPath, CommitFilter{
 		OffsetHash: offsetHash,
-		Limit:     limit,
+		Limit:      limit,
 	})
 }
 
@@ -555,6 +555,38 @@ func (s *GitService) ListCommitsByAuthor(projectPath string, author string, limi
 func (s *GitService) SearchCommits(projectPath string, query string, limit int) ([]CommitInfo, error) {
 	return s.ListCommits(projectPath, CommitFilter{
 		SearchQuery: query,
-		Limit:      limit,
+		Limit:       limit,
 	})
+}
+
+// GetHeadCommit returns the current HEAD commit
+func (s *GitService) GetHeadCommit(projectPath string) (*CommitInfo, error) {
+	repo, err := git.PlainOpen(projectPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get HEAD: %w", err)
+	}
+
+	commit, err := repo.CommitObject(head.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get commit object: %w", err)
+	}
+
+	parentHashes := make([]string, len(commit.ParentHashes))
+	for i, hash := range commit.ParentHashes {
+		parentHashes[i] = hash.String()
+	}
+
+	return &CommitInfo{
+		Hash:         commit.Hash.String(),
+		Message:      commit.Message,
+		Author:       commit.Author.Name,
+		AuthorEmail:  commit.Author.Email,
+		Date:         commit.Author.When,
+		ParentHashes: parentHashes,
+	}, nil
 }
