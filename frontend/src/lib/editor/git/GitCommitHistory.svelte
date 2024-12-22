@@ -137,6 +137,7 @@
                     bind:this={scrollContainer}
                     on:scroll={handleScroll}
                     class="absolute inset-0 overflow-y-auto"
+                    class:overflow-y-hidden={contextMenu.show}
                 >
                     {#if $gitStore.commitsLoading && !loadingMore}
                         <div class="flex items-center justify-center py-4">
