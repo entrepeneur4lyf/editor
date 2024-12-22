@@ -12,7 +12,7 @@
     import { gitStore } from '@/stores/gitStore';
     import { registerCommand, setKeyboardContext } from '@/stores/keyboardStore';
     import { get } from 'svelte/store';
-    import Editor from "@/lib/editor/Editor.svelte";
+    import MonacoEditor from "@/lib/editor/MonacoEditor.svelte";
     import FileFinderPallete from "@/lib/components/palletes/FileFinderPallete.svelte";
     import GitCommitPallete from "@/lib/components/palletes/GitCommitPallete.svelte";
     import Modal from "@/lib/components/Modal.svelte";
@@ -280,7 +280,7 @@
             </div>
 
             <div class="flex-1 relative overflow-hidden">
-                <Editor />
+                <MonacoEditor />
             </div>
             {#if !$bottomPaneStore.collapsed}
                 <ResizeHandle 
