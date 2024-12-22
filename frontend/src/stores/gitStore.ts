@@ -14,7 +14,8 @@ import {
     ListCommitsByBranch,
     ListCommitsByAuthor,
     SearchCommits,
-    GetHeadCommit
+    GetHeadCommit,
+    GetFileDiff
 } from '@/lib/wailsjs/go/main/App';
 import { fileStore } from '@/stores/fileStore';
 import type { service } from '@/lib/wailsjs/go/models';
@@ -35,6 +36,12 @@ interface GitState {
     commitsError: string | null;
     HEAD: service.CommitInfo | null;
     initialized: boolean;
+    // Diff view state
+    selectedFile: string | null;
+    selectedFileStaged: boolean;
+    fileDiff: service.FileDiff | null;
+    isDiffLoading: boolean;
+    diffError: string | null;
 }
 
 function createGitStore() {
@@ -53,7 +60,14 @@ function createGitStore() {
         commitsLoading: false,
         commitsError: null,
         HEAD: null,
-        initialized: false
+        initialized: false,
+        
+        // Diff view initial state
+        selectedFile: null,
+        selectedFileStaged: false,
+        fileDiff: null,
+        isDiffLoading: false,
+        diffError: null
     });
 
     return {
@@ -545,6 +559,48 @@ function createGitStore() {
             }
         },
 
+        async selectFile(file: string, staged: boolean) {
+            update(state => ({
+                ...state,
+                selectedFile: file,
+                selectedFileStaged: staged,
+                isDiffLoading: true,
+                diffError: null
+            }));
+
+            try {
+                const projectPath = get(fileStore).currentProjectPath;
+                if (!projectPath) {
+                    throw new Error('No project path');
+                }
+
+                const diff = await GetFileDiff(projectPath, file, staged);
+                update(state => ({
+                    ...state,
+                    fileDiff: diff,
+                    isDiffLoading: false
+                }));
+            } catch (error) {
+                update(state => ({
+                    ...state,
+                    fileDiff: null,
+                    isDiffLoading: false,
+                    diffError: `Failed to load diff: ${error}`
+                }));
+            }
+        },
+
+        clearFileSelection() {
+            update(state => ({
+                ...state,
+                selectedFile: null,
+                selectedFileStaged: false,
+                fileDiff: null,
+                isDiffLoading: false,
+                diffError: null
+            }));
+        },
+
         reset() {
             set({
                 gitStatus: [],
@@ -561,7 +617,12 @@ function createGitStore() {
                 commitsLoading: false,
                 commitsError: null,
                 HEAD: null,
-                initialized: false
+                initialized: false,
+                selectedFile: null,
+                selectedFileStaged: false,
+                fileDiff: null,
+                isDiffLoading: false,
+                diffError: null
             });
         }
     };

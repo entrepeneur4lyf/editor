@@ -3,10 +3,11 @@
     import Button from "@/lib/components/Button.svelte";
     import { gitStore } from "@/stores/gitStore";
     import { onMount } from "svelte";
-    import GitRepositoryStatus from "../git/GitRepositoryStatus.svelte";
-    import GitStagedChanges from "../git/GitStagedChanges.svelte";
-    import GitUnstagedChanges from "../git/GitUnstagedChanges.svelte";
-    import GitCommitSection from "../git/GitCommitSection.svelte";
+    import GitRepositoryStatus from "@/lib/editor/git/GitRepositoryStatus.svelte";
+    import GitStagedChanges from "@/lib/editor/git/GitStagedChanges.svelte";
+    import GitUnstagedChanges from "@/lib/editor/git/GitUnstagedChanges.svelte";
+    import GitCommitSection from "@/lib/editor/git/GitCommitSection.svelte";
+    import GitChangesView from "@/lib/editor/git/changes/GitChangesView.svelte";
 
     onMount(async () => {
         await gitStore.checkRepository();
@@ -39,11 +40,15 @@
         <GitRepositoryStatus />
         
         {#if $gitStore.isRepository && !$gitStore.isLoading && !$gitStore.error}
-            <div class="p-1 pt-2 flex-1">
-                <GitStagedChanges />
-                <GitUnstagedChanges />
-            </div>
-            <GitCommitSection />
+            {#if $gitStore.selectedFile}
+                <GitChangesView />
+            {:else}
+                <div class="p-1 pt-2 flex-1">
+                    <GitStagedChanges />
+                    <GitUnstagedChanges />
+                </div>
+                <GitCommitSection />
+            {/if}
         {/if}
     </div>
 </div>
