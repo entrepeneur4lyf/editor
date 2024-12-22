@@ -8,9 +8,14 @@ import (
 	"strings"
 	"time"
 
+	"io"
+	"net/http"
+
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/utils/diff"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // FileStatus represents the status of a file in the Git repository
@@ -49,6 +54,21 @@ type CommitFilter struct {
 	SearchQuery string    `json:"searchQuery"` // Search in commit messages
 	StartDate   time.Time `json:"startDate"`   // Filter commits after this date
 	EndDate     time.Time `json:"endDate"`     // Filter commits before this date
+}
+
+// FileDiff represents the diff information for a file
+type FileDiff struct {
+	Path     string    `json:"path"`     // File path
+	Content  string    `json:"content"`  // Diff content in unified format
+	Stats    DiffStats `json:"stats"`    // Statistics about the changes
+	IsBinary bool      `json:"isBinary"` // Whether the file is binary
+}
+
+// DiffStats contains statistics about changes in a diff
+type DiffStats struct {
+	Added    int `json:"added"`    // Number of added lines
+	Deleted  int `json:"deleted"`  // Number of deleted lines
+	Modified int `json:"modified"` // Number of modified lines
 }
 
 // GitService handles Git operations for projects
@@ -589,4 +609,239 @@ func (s *GitService) GetHeadCommit(projectPath string) (*CommitInfo, error) {
 		Date:         commit.Author.When,
 		ParentHashes: parentHashes,
 	}, nil
+}
+
+// GetFileDiff returns the diff for a specific file
+// If staged is true, returns the diff between HEAD and staged changes
+// If staged is false, returns the diff between staged/HEAD and working directory
+func (s *GitService) GetFileDiff(projectPath string, filePath string, staged bool) (*FileDiff, error) {
+	repo, err := git.PlainOpen(projectPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open repository: %w", err)
+	}
+
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	// Get file status to check if it's untracked or binary
+	status, err := worktree.Status()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get status: %w", err)
+	}
+
+	fileStatus := status.File(filePath)
+	if fileStatus.Staging == git.Untracked && staged {
+		return nil, fmt.Errorf("cannot get staged diff for untracked file")
+	}
+
+	// Check if file is binary
+	fullPath := filepath.Join(projectPath, filePath)
+	isBinary, err := isFileBinary(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if file is binary: %w", err)
+	}
+	if isBinary {
+		return &FileDiff{
+			Path:     filePath,
+			IsBinary: true,
+		}, nil
+	}
+
+	var diff string
+	var stats DiffStats
+
+	if staged {
+		// Get diff between HEAD and index
+		diff, stats, err = s.getStagedDiff(repo, worktree, filePath)
+	} else {
+		// Get diff between index/HEAD and working directory
+		diff, stats, err = s.getWorkingDiff(repo, worktree, filePath, fileStatus.Staging == git.Untracked)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &FileDiff{
+		Path:     filePath,
+		Content:  diff,
+		Stats:    stats,
+		IsBinary: false,
+	}, nil
+}
+
+// getStagedDiff returns the diff between HEAD and index
+func (s *GitService) getStagedDiff(repo *git.Repository, worktree *git.Worktree, filePath string) (string, DiffStats, error) {
+	head, err := repo.Head()
+	if err != nil {
+		if err == plumbing.ErrReferenceNotFound {
+			// If no HEAD (new repo), compare with empty tree
+			return s.getDiffWithEmpty(worktree, filePath, true)
+		}
+		return "", DiffStats{}, fmt.Errorf("failed to get HEAD: %w", err)
+	}
+
+	commit, err := repo.CommitObject(head.Hash())
+	if err != nil {
+		return "", DiffStats{}, fmt.Errorf("failed to get commit: %w", err)
+	}
+
+	// Get the tree for HEAD
+	headTree, err := commit.Tree()
+	if err != nil {
+		return "", DiffStats{}, fmt.Errorf("failed to get tree: %w", err)
+	}
+
+	// Get the index (staged) tree
+	indexState, err := worktree.Status()
+	if err != nil {
+		return "", DiffStats{}, fmt.Errorf("failed to get status: %w", err)
+	}
+
+	var oldContent, newContent string
+
+	// Get old content from HEAD
+	if headFile, err := headTree.File(filePath); err == nil {
+		oldContent, err = headFile.Contents()
+		if err != nil {
+			return "", DiffStats{}, fmt.Errorf("failed to get HEAD file contents: %w", err)
+		}
+	}
+
+	// Get new content from index
+	if indexState.File(filePath).Staging == git.Added {
+		newContent, err = s.getFileContents(filepath.Join(worktree.Filesystem.Root(), filePath))
+		if err != nil {
+			return "", DiffStats{}, fmt.Errorf("failed to get index file contents: %w", err)
+		}
+	}
+
+	return s.generateDiff(oldContent, newContent, filePath)
+}
+
+// getWorkingDiff returns the diff between index/HEAD and working directory
+func (s *GitService) getWorkingDiff(repo *git.Repository, worktree *git.Worktree, filePath string, isUntracked bool) (string, DiffStats, error) {
+	if isUntracked {
+		return s.getDiffWithEmpty(worktree, filePath, false)
+	}
+
+	// Get the base content (from index if staged, otherwise from HEAD)
+	status, err := worktree.Status()
+	if err != nil {
+		return "", DiffStats{}, fmt.Errorf("failed to get status: %w", err)
+	}
+
+	var oldContent string
+	fileStatus := status.File(filePath)
+
+	if fileStatus.Staging != git.Unmodified {
+		// If there are staged changes, compare with index
+		oldContent, err = s.getFileContents(filepath.Join(worktree.Filesystem.Root(), filePath))
+	} else {
+		// Otherwise compare with HEAD
+		head, err := repo.Head()
+		if err != nil {
+			if err == plumbing.ErrReferenceNotFound {
+				return s.getDiffWithEmpty(worktree, filePath, false)
+			}
+			return "", DiffStats{}, fmt.Errorf("failed to get HEAD: %w", err)
+		}
+
+		commit, err := repo.CommitObject(head.Hash())
+		if err != nil {
+			return "", DiffStats{}, fmt.Errorf("failed to get commit: %w", err)
+		}
+
+		tree, err := commit.Tree()
+		if err != nil {
+			return "", DiffStats{}, fmt.Errorf("failed to get tree: %w", err)
+		}
+
+		if headFile, err := tree.File(filePath); err == nil {
+			oldContent, err = headFile.Contents()
+			if err != nil {
+				return "", DiffStats{}, fmt.Errorf("failed to get HEAD file contents: %w", err)
+			}
+		}
+	}
+
+	// Get working directory content
+	newContent, err := s.getFileContents(filepath.Join(worktree.Filesystem.Root(), filePath))
+	if err != nil {
+		return "", DiffStats{}, fmt.Errorf("failed to get working file contents: %w", err)
+	}
+
+	return s.generateDiff(oldContent, newContent, filePath)
+}
+
+// getDiffWithEmpty returns a diff comparing with an empty file
+func (s *GitService) getDiffWithEmpty(worktree *git.Worktree, filePath string, staged bool) (string, DiffStats, error) {
+    var content string
+    var err error
+
+    // Both staged and unstaged cases read from the same location
+    // since we're dealing with a new file
+    content, err = s.getFileContents(filepath.Join(worktree.Filesystem.Root(), filePath))
+    if err != nil {
+        return "", DiffStats{}, fmt.Errorf("failed to get file contents: %w", err)
+    }
+
+    return s.generateDiff("", content, filePath)
+}
+
+// generateDiff creates a unified diff from old and new content
+func (s *GitService) generateDiff(oldContent, newContent, filePath string) (string, DiffStats, error) {
+	// Calculate diffs using go-git/go-diff
+    diffs := diff.Do(oldContent, newContent)
+
+    stats := DiffStats{}
+    var diffOutput strings.Builder
+
+    // Write diff header
+    fmt.Fprintf(&diffOutput, "--- a/%s\n+++ b/%s\n", filePath, filePath)
+
+    // Calculate stats and build diff output
+    for _, d := range diffs {
+        switch d.Type {
+        case diffmatchpatch.DiffDelete:
+            stats.Deleted += strings.Count(d.Text, "\n") + 1
+            fmt.Fprintf(&diffOutput, "-%s", d.Text)
+        case diffmatchpatch.DiffInsert:
+            stats.Added += strings.Count(d.Text, "\n") + 1
+            fmt.Fprintf(&diffOutput, "+%s", d.Text)
+        case diffmatchpatch.DiffEqual:
+            fmt.Fprintf(&diffOutput, " %s", d.Text)
+        }
+    }
+
+    return diffOutput.String(), stats, nil
+}
+
+// getFileContents reads a file's contents
+func (s *GitService) getFileContents(path string) (string, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file: %w", err)
+	}
+	return string(content), nil
+}
+
+// isFileBinary checks if a file is binary
+func isFileBinary(path string) (bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	// Read first 512 bytes to check content type
+	buffer := make([]byte, 512)
+	n, err := file.Read(buffer)
+	if err != nil && err != io.EOF {
+		return false, err
+	}
+
+	return strings.Contains(http.DetectContentType(buffer[:n]), "application/octet-stream"), nil
 }
