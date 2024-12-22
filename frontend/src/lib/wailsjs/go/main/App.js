@@ -54,6 +54,10 @@ export function GetGitStatus(arg1) {
   return window['go']['main']['App']['GetGitStatus'](arg1);
 }
 
+export function GetHeadCommit(arg1) {
+  return window['go']['main']['App']['GetHeadCommit'](arg1);
+}
+
 export function GetProjectFiles(arg1) {
   return window['go']['main']['App']['GetProjectFiles'](arg1);
 }

@@ -109,6 +109,8 @@
     }
 </script>
 
+<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 <BasePalette
     bind:show
     bind:searchQuery
@@ -134,7 +136,9 @@
                         handleSelect();
                     }}
                 >
-                    <GitCommit class="w-4 h-4 {commit.hash === $gitStore.HEAD ? 'text-sky-500' : 'text-gray-500'} mt-1 flex-shrink-0" />
+                    <GitCommit 
+                        class="w-4 h-4 {commit.hash === $gitStore.HEAD?.hash ? 'text-sky-500' : 'text-gray-500'} mt-1 flex-shrink-0" 
+                    />
                     <div class="ml-2 flex-1 min-w-0">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2 min-w-0 flex-1">
@@ -145,7 +149,7 @@
                                 <span class="text-xs text-gray-500 truncate">{commit.author}</span>
                             </div>
                             <div class="flex items-center gap-2 flex-shrink-0 ml-2">
-                                {#if commit.hash === $gitStore.HEAD}
+                                {#if commit.hash === $gitStore.HEAD?.hash}
                                     <span class="px-1.5 py-0.5 bg-gray-800 rounded text-xs text-sky-500 border border-sky-500 border-opacity-50">
                                         Current
                                     </span>

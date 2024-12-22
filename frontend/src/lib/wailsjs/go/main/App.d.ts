@@ -29,6 +29,8 @@ export function GetFileContent(arg1:string):Promise<string>;
 
 export function GetGitStatus(arg1:string):Promise<Array<service.FileStatus>>;
 
+export function GetHeadCommit(arg1:string):Promise<service.CommitInfo>;
+
 export function GetProjectFiles(arg1:string):Promise<service.FileNode>;
 
 export function GetRecentProjects():Promise<Array<db.Project>>;

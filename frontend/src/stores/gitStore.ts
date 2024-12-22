@@ -31,6 +31,7 @@ interface GitState {
     commits: service.CommitInfo[];
     commitsLoading: boolean;
     commitsError: string | null;
+    HEAD: service.CommitInfo | null;
 }
 
 function createGitStore() {
@@ -46,7 +47,8 @@ function createGitStore() {
         currentBranch: null,
         commits: [],
         commitsLoading: false,
-        commitsError: null
+        commitsError: null,
+        HEAD: null
     });
 
     return {
@@ -128,6 +130,39 @@ function createGitStore() {
                     isLoading: false,
                     error: `Failed to initialize repository: ${error}`
                 }));
+            }
+        },
+
+        async init() {
+            const projectPath = get(fileStore).currentProjectPath;
+            if (!projectPath) {
+                return;
+            }
+
+            update(state => ({ ...state, isLoading: true, error: null }));
+            try {
+                const [isRepo, branches, currentBranch, status] = await Promise.all([
+                    IsGitRepository(projectPath),
+                    ListBranches(projectPath),
+                    GetCurrentBranch(projectPath),
+                    GetGitStatus(projectPath)
+                ]);
+
+                update(state => ({ 
+                    ...state, 
+                    isRepository: isRepo,
+                    branches,
+                    currentBranch,
+                    gitStatus: status
+                }));
+
+                if (isRepo) {
+                    await this.getCommits();
+                }
+            } catch (error) {
+                update(state => ({ ...state, error: error instanceof Error ? error.message : 'Failed to initialize git' }));
+            } finally {
+                update(state => ({ ...state, isLoading: false }));
             }
         },
 
@@ -269,22 +304,17 @@ function createGitStore() {
         },
 
         async commit(message: string): Promise<void> {
-            try {
-                const projectPath = get(fileStore).currentProjectPath;
-                if (!projectPath) {
-                    return;
-                }
+            const projectPath = get(fileStore).currentProjectPath;
+            if (!projectPath) {
+                return;
+            }
 
-                // After successful commit, refresh the git status
-                update(state => ({ ...state, isLoading: true, error: null }));
+            try {
                 await Commit(projectPath, message);
+                await this.getCommits(); // This will also update HEAD
                 await this.refreshStatus();
             } catch (error) {
-                update(state => ({
-                    ...state,
-                    isLoading: false,
-                    error: `Failed to commit changes: ${error}`
-                }));
+                console.error('Failed to commit:', error);
             }
         },
 
@@ -314,7 +344,7 @@ function createGitStore() {
             }
         },
 
-        async getCommits(filter: service.CommitFilter) {
+        async getCommits(filter: service.CommitFilter = { limit: 20 }) {
             const projectPath = get(fileStore).currentProjectPath;
             if (!projectPath) {
                 return;
@@ -323,9 +353,10 @@ function createGitStore() {
             update(state => ({ ...state, commitsLoading: true, commitsError: null }));
             try {
                 const commits = await ListCommits(projectPath, filter);
-                update(state => ({ ...state, commits }));
+                const head = commits.find(c => c.hash === commits[0]?.hash) || null;
+                update(state => ({ ...state, commits, HEAD: head }));
             } catch (error) {
-                update(state => ({ ...state, commitsError: error.message }));
+                update(state => ({ ...state, commitsError: error instanceof Error ? error.message : 'Failed to load commits' }));
             } finally {
                 update(state => ({ ...state, commitsLoading: false }));
             }
@@ -419,20 +450,23 @@ function createGitStore() {
             }
         },
 
-        reset: () => set({
-            gitStatus: [],
-            stagedExpanded: true,
-            changesExpanded: true,
-            isRepository: false,
-            isLoading: false,
-            loadingFiles: new Set(),
-            error: null,
-            branches: [],
-            currentBranch: null,
-            commits: [],
-            commitsLoading: false,
-            commitsError: null
-        })
+        reset() {
+            set({
+                gitStatus: [],
+                stagedExpanded: true,
+                changesExpanded: true,
+                isRepository: false,
+                isLoading: false,
+                loadingFiles: new Set(),
+                error: null,
+                branches: [],
+                currentBranch: null,
+                commits: [],
+                commitsLoading: false,
+                commitsError: null,
+                HEAD: null
+            });
+        }
     };
 }
 
