@@ -13,6 +13,7 @@
     import { registerCommand, setKeyboardContext } from '@/stores/keyboardStore';
     import { get } from 'svelte/store';
     import MonacoEditor from "@/lib/editor/core/MonacoEditor.svelte";
+    import EditorTabs from "@/lib/editor/core/EditorTabs.svelte";
     import FileFinderPallete from "@/lib/components/palletes/FileFinderPallete.svelte";
     import GitCommitPallete from "@/lib/components/palletes/GitCommitPallete.svelte";
     import Modal from "@/lib/components/Modal.svelte";
@@ -53,82 +54,34 @@
     // Source control state
     $: modifiedFilesCount = $gitStore.gitStatus.length;
 
-    let tabsContainer: HTMLDivElement;
-
     let showCloseConfirmModal = false;
     let fileToClose: string | null = null;
 
-    function setActiveTab(id: string) {
-        fileStore.setActiveFile(id);
-        scrollToTab(id);
-    }
-
-    function scrollToTab(id: string) {
-        if (tabsContainer) {
-            // Find the tab element
-            const tabElement = tabsContainer.querySelector(`[data-tab-id="${id}"]`);
-            if (tabElement) {
-                const containerWidth = tabsContainer.offsetWidth;
-                const tabWidth = (tabElement as HTMLElement).offsetWidth;
-                const tabLeft = (tabElement as HTMLElement).offsetLeft;
-                const scrollLeft = tabLeft - (containerWidth - tabWidth) / 2;
-                
-                tabsContainer.scrollTo({
-                    left: scrollLeft,
-                    behavior: 'smooth'
-                });
-            }
-        }
-    }
-
-    // Watch for active file changes
-    $: if ($fileStore.activeFilePath) {
-        // Wait for the DOM to update before scrolling
-        setTimeout(() => scrollToTab($fileStore.activeFilePath), 0);
-    }
-
-    function handleCloseTab(id: string) {
-        const file = $fileStore.openFiles.get(id);
-        if (file?.isDirty) {
-            fileToClose = id;
-            showCloseConfirmModal = true;
-        } else {
-            closeTab(id);
-        }
+    function handleTabCloseRequest(event: CustomEvent<{ id: string }>) {
+        fileToClose = event.detail.id;
+        showCloseConfirmModal = true;
     }
 
     function confirmCloseTab() {
         if (fileToClose) {
-            closeTab(fileToClose);
+            fileStore.closeFile(fileToClose);
             fileToClose = null;
             showCloseConfirmModal = false;
         }
     }
 
-    function closeTab(id: string) {
-        fileStore.closeFile(id);
+    function setActiveTab(id: string) {
+        fileStore.setActiveFile(id);
+    }
+
+    // Watch for active file changes
+    $: if ($fileStore.activeFilePath) {
+        // Wait for the DOM to update before scrolling
+        setTimeout(() => setActiveTab($fileStore.activeFilePath), 0);
     }
 
     function handleResize() {
         editor?.layout();
-    }
-
-    function scrollTabs(direction: 'left' | 'right') {
-        if (tabsContainer) {
-            const scrollAmount = 200;
-            const targetScroll = tabsContainer.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount);
-            tabsContainer.scrollTo({
-                left: targetScroll,
-                behavior: 'smooth'
-            });
-        }
-    }
-
-    function handleTabClick(event: MouseEvent, id: string) {
-        if (event.button === 1) { // Middle click
-            event.preventDefault();
-            handleCloseTab(id);
-        }
     }
 
     function toggleSourceControl() {
@@ -229,55 +182,7 @@
 
         
         <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-            <div class="flex items-center border-b border-gray-800 bg-gray-900 relative">
-                <div 
-                    bind:this={tabsContainer}
-                    class="flex overflow-x-scroll scrollbar-hide relative flex-1"
-                >
-                    {#each tabs as tab (tab.id)}
-                        <button
-                            data-tab-id={tab.id}
-                            class="flex items-center h-[34px] px-4 border-r border-gray-800 cursor-pointer relative
-                                {tab.active
-                                    ? 'bg-gray-900 before:absolute before:top-0 before:left-0 before:right-0 before:h-[2px] before:bg-sky-500'
-                                    : 'bg-gray-800 hover:bg-gray-700'} 
-                                transition-colors duration-200"
-                            on:click={() => setActiveTab(tab.id)}
-                            on:mouseup={(e) => handleTabClick(e, tab.id)}
-                        >
-                            <span class="flex items-center gap-2">
-                                {#if tab.isDirty}
-                                    <Circle size={8} class="fill-current text-gray-300" />
-                                {/if}
-                                {tab.name}
-                            </span>
-                            <button
-                                on:click|stopPropagation={() => handleCloseTab(tab.id)}
-                                class="ml-2 text-gray-400 hover:text-gray-100 transition-colors duration-200"
-                                aria-label="Close {tab.name}"
-                            >
-                                <X size={14} />
-                            </button>
-                        </button>
-                    {/each}
-                </div>
-                <div class="flex items-center gap-1 border-gray-800 bg-gray-900 pl-1 sticky right-0">
-                    <button
-                        on:click={() => scrollTabs('left')}
-                        class="p-1.5 hover:bg-gray-800 transition-colors duration-200 rounded-md border border-gray-700"
-                        aria-label="Scroll tabs left"
-                    >
-                        <ChevronLeft size={16} />
-                    </button>
-                    <button
-                        on:click={() => scrollTabs('right')}
-                        class="p-1.5 hover:bg-gray-800 transition-colors duration-200 rounded-md border border-gray-700"
-                        aria-label="Scroll tabs right"
-                    >
-                        <ChevronRight size={16} />
-                    </button>
-                </div>
-            </div>
+            <EditorTabs on:closeRequest={handleTabCloseRequest} />
 
             <div class="flex-1 relative overflow-hidden">
                 <MonacoEditor />
@@ -303,32 +208,31 @@
                 maxSize={800}
             />
             <div class="h-full" style="width: {rightSidebarWidth}px">
-                <RightSidebar collapsed={rightSidebarCollapsed} />
+                <RightSidebar />
             </div>
         {/if}
     </div>
-    
+
     <BottomBar />
 
     <FileFinderPallete 
         bind:show={showFileFinder} 
         on:close={() => showFileFinder = false} 
-        on:select={({ detail }) => scrollToTab(detail.path)}
+        on:select={({ detail }) => fileStore.setActiveFile(detail.path)}
     />
 
+    <GitCommitPallete
+        bind:show={showCommitSearch}
+        on:close={() => showCommitSearch = false}
+    />
 
-    <GitCommitPallete bind:show={showCommitSearch} />
-    
     <Modal
         bind:show={showCloseConfirmModal}
         title="Unsaved Changes"
-        confirmText="Close without saving"
-        cancelText="Cancel"
-        confirmButtonClass="bg-red-600 hover:bg-red-700"
-        on:confirm={confirmCloseTab}
-        on:close={() => showCloseConfirmModal = false}
+        confirmText="Discard"
+        onConfirm={confirmCloseTab}
     >
-        <p>You have unsaved changes in this file. Are you sure you want to close it?</p>
+        <p>You have unsaved changes in this file. Do you want to discard them?</p>
     </Modal>
 </div>
 
