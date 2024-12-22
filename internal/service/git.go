@@ -3,13 +3,12 @@ package service
 import (
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-
-	"io"
-	"net/http"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -166,25 +165,33 @@ func (s *GitService) GetStatus(projectPath string) ([]FileStatus, error) {
 			continue
 		}
 
-		fs := FileStatus{
-			File: file,
-		}
-
 		// For untracked files
 		if fileStatus.Worktree == git.Untracked {
-			fs.Staged = false
-			fs.Status = string(git.Untracked)
-		} else if fileStatus.Staging != git.Unmodified {
-			// For staged changes
-			fs.Staged = true
-			fs.Status = string(fileStatus.Staging)
-		} else {
-			// For unstaged changes
-			fs.Staged = false
-			fs.Status = string(fileStatus.Worktree)
+			files = append(files, FileStatus{
+				File:   file,
+				Staged: false,
+				Status: string(git.Untracked),
+			})
+			continue
 		}
 
-		files = append(files, fs)
+		// Handle staged changes
+		if fileStatus.Staging != git.Unmodified {
+			files = append(files, FileStatus{
+				File:   file,
+				Staged: true,
+				Status: string(fileStatus.Staging),
+			})
+		}
+
+		// Handle unstaged changes
+		if fileStatus.Worktree != git.Unmodified {
+			files = append(files, FileStatus{
+				File:   file,
+				Staged: false,
+				Status: string(fileStatus.Worktree),
+			})
+		}
 	}
 
 	return files, nil
@@ -734,13 +741,7 @@ func (s *GitService) getStagedDiff(repo *git.Repository, worktree *git.Worktree,
 		return "", DiffStats{}, fmt.Errorf("failed to get tree: %w", err)
 	}
 
-	// Get the index (staged) tree
-	indexState, err := worktree.Status()
-	if err != nil {
-		return "", DiffStats{}, fmt.Errorf("failed to get status: %w", err)
-	}
-
-	var oldContent, newContent string
+	var oldContent string
 
 	// Get old content from HEAD
 	if headFile, err := headTree.File(filePath); err == nil {
@@ -750,12 +751,35 @@ func (s *GitService) getStagedDiff(repo *git.Repository, worktree *git.Worktree,
 		}
 	}
 
-	// Get new content from index for Added or Modified files
-	fileStatus := indexState.File(filePath)
-	if fileStatus.Staging == git.Added || fileStatus.Staging == git.Modified {
-		newContent, err = s.getFileContents(filepath.Join(worktree.Filesystem.Root(), filePath))
-		if err != nil {
-			return "", DiffStats{}, fmt.Errorf("failed to get index file contents: %w", err)
+	// Get index content using the underlying index
+	idx, err := repo.Storer.Index()
+	if err != nil {
+		return "", DiffStats{}, fmt.Errorf("failed to get index: %w", err)
+	}
+
+	// Find the entry in the index
+	var newContent string
+	for _, entry := range idx.Entries {
+		if entry.Name == filePath {
+			// Get the object from the repository
+			obj, err := repo.BlobObject(entry.Hash)
+			if err != nil {
+				return "", DiffStats{}, fmt.Errorf("failed to get blob object: %w", err)
+			}
+
+			// Read the blob content
+			reader, err := obj.Reader()
+			if err != nil {
+				return "", DiffStats{}, fmt.Errorf("failed to get blob reader: %w", err)
+			}
+			defer reader.Close()
+
+			content, err := io.ReadAll(reader)
+			if err != nil {
+				return "", DiffStats{}, fmt.Errorf("failed to read blob content: %w", err)
+			}
+			newContent = string(content)
+			break
 		}
 	}
 
@@ -768,20 +792,42 @@ func (s *GitService) getWorkingDiff(repo *git.Repository, worktree *git.Worktree
 		return s.getDiffWithEmpty(worktree, filePath, false)
 	}
 
-	// Get the base content (from index if staged, otherwise from HEAD)
-	status, err := worktree.Status()
+	var oldContent string
+
+	// Try to get content from index first
+	idx, err := repo.Storer.Index()
 	if err != nil {
-		return "", DiffStats{}, fmt.Errorf("failed to get status: %w", err)
+		return "", DiffStats{}, fmt.Errorf("failed to get index: %w", err)
 	}
 
-	var oldContent string
-	fileStatus := status.File(filePath)
+	foundInIndex := false
+	for _, entry := range idx.Entries {
+		if entry.Name == filePath {
+			// Get the object from the repository
+			obj, err := repo.BlobObject(entry.Hash)
+			if err != nil {
+				return "", DiffStats{}, fmt.Errorf("failed to get blob object: %w", err)
+			}
 
-	if fileStatus.Staging != git.Unmodified {
-		// If there are staged changes, compare with index
-		oldContent, err = s.getFileContents(filepath.Join(worktree.Filesystem.Root(), filePath))
-	} else {
-		// Otherwise compare with HEAD
+			// Read the blob content
+			reader, err := obj.Reader()
+			if err != nil {
+				return "", DiffStats{}, fmt.Errorf("failed to get blob reader: %w", err)
+			}
+			defer reader.Close()
+
+			content, err := io.ReadAll(reader)
+			if err != nil {
+				return "", DiffStats{}, fmt.Errorf("failed to read blob content: %w", err)
+			}
+			oldContent = string(content)
+			foundInIndex = true
+			break
+		}
+	}
+
+	// If not in index, try HEAD
+	if !foundInIndex {
 		head, err := repo.Head()
 		if err != nil {
 			if err == plumbing.ErrReferenceNotFound {
@@ -819,78 +865,78 @@ func (s *GitService) getWorkingDiff(repo *git.Repository, worktree *git.Worktree
 
 // getDiffWithEmpty returns a diff comparing with an empty file
 func (s *GitService) getDiffWithEmpty(worktree *git.Worktree, filePath string, staged bool) (string, DiffStats, error) {
-    var content string
-    var err error
+	var content string
+	var err error
 
-    // Both staged and unstaged cases read from the same location
-    // since we're dealing with a new file
-    content, err = s.getFileContents(filepath.Join(worktree.Filesystem.Root(), filePath))
-    if err != nil {
-        return "", DiffStats{}, fmt.Errorf("failed to get file contents: %w", err)
-    }
+	// Both staged and unstaged cases read from the same location
+	// since we're dealing with a new file
+	content, err = s.getFileContents(filepath.Join(worktree.Filesystem.Root(), filePath))
+	if err != nil {
+		return "", DiffStats{}, fmt.Errorf("failed to get file contents: %w", err)
+	}
 
-    return s.generateDiff("", content, filePath)
+	return s.generateDiff("", content, filePath)
 }
 
 // generateDiff creates a unified diff from old and new content
 func (s *GitService) generateDiff(oldContent, newContent, filePath string) (string, DiffStats, error) {
-    // For deleted files, show all lines as deleted
-    if newContent == "" && oldContent != "" {
-        lines := strings.Split(strings.TrimSuffix(oldContent, "\n"), "\n")
-        stats := DiffStats{
-            Deleted: len(lines),
-        }
-        var diffOutput strings.Builder
-        
-        // Write diff header
-        fmt.Fprintf(&diffOutput, "--- a/%s\n+++ b/%s\n", filePath, filePath)
-        fmt.Fprintf(&diffOutput, "@@ -1,%d +0,0 @@\n", len(lines))
-        
-        // Show each line as deleted
-        for _, line := range lines {
-            fmt.Fprintf(&diffOutput, "-%s\n", line)
-        }
-        
-        return diffOutput.String(), stats, nil
-    }
+	// For deleted files, show all lines as deleted
+	if newContent == "" && oldContent != "" {
+		lines := strings.Split(strings.TrimSuffix(oldContent, "\n"), "\n")
+		stats := DiffStats{
+			Deleted: len(lines),
+		}
+		var diffOutput strings.Builder
 
-    // Normalize line endings and split into lines
-    oldLines := strings.Split(strings.TrimSuffix(oldContent, "\n"), "\n")
-    newLines := strings.Split(strings.TrimSuffix(newContent, "\n"), "\n")
+		// Write diff header
+		fmt.Fprintf(&diffOutput, "--- a/%s\n+++ b/%s\n", filePath, filePath)
+		fmt.Fprintf(&diffOutput, "@@ -1,%d +0,0 @@\n", len(lines))
 
-    // Calculate diffs using go-git/go-diff
-    diffs := diff.Do(strings.Join(oldLines, "\n"), strings.Join(newLines, "\n"))
+		// Show each line as deleted
+		for _, line := range lines {
+			fmt.Fprintf(&diffOutput, "-%s\n", line)
+		}
 
-    stats := DiffStats{}
-    var diffOutput strings.Builder
+		return diffOutput.String(), stats, nil
+	}
 
-    // Write diff header
-    fmt.Fprintf(&diffOutput, "--- a/%s\n+++ b/%s\n", filePath, filePath)
+	// Normalize line endings and split into lines
+	oldLines := strings.Split(strings.TrimSuffix(oldContent, "\n"), "\n")
+	newLines := strings.Split(strings.TrimSuffix(newContent, "\n"), "\n")
 
-    // Calculate stats and build diff output
-    for _, d := range diffs {
-        switch d.Type {
-        case diffmatchpatch.DiffDelete:
-            lines := strings.Split(strings.TrimSuffix(d.Text, "\n"), "\n")
-            stats.Deleted += len(lines)
-            for _, line := range lines {
-                fmt.Fprintf(&diffOutput, "-%s\n", line)
-            }
-        case diffmatchpatch.DiffInsert:
-            lines := strings.Split(strings.TrimSuffix(d.Text, "\n"), "\n")
-            stats.Added += len(lines)
-            for _, line := range lines {
-                fmt.Fprintf(&diffOutput, "+%s\n", line)
-            }
-        case diffmatchpatch.DiffEqual:
-            lines := strings.Split(strings.TrimSuffix(d.Text, "\n"), "\n")
-            for _, line := range lines {
-                fmt.Fprintf(&diffOutput, " %s\n", line)
-            }
-        }
-    }
+	// Calculate diffs using go-git/go-diff
+	diffs := diff.Do(strings.Join(oldLines, "\n"), strings.Join(newLines, "\n"))
 
-    return diffOutput.String(), stats, nil
+	stats := DiffStats{}
+	var diffOutput strings.Builder
+
+	// Write diff header
+	fmt.Fprintf(&diffOutput, "--- a/%s\n+++ b/%s\n", filePath, filePath)
+
+	// Calculate stats and build diff output
+	for _, d := range diffs {
+		switch d.Type {
+		case diffmatchpatch.DiffDelete:
+			lines := strings.Split(strings.TrimSuffix(d.Text, "\n"), "\n")
+			stats.Deleted += len(lines)
+			for _, line := range lines {
+				fmt.Fprintf(&diffOutput, "-%s\n", line)
+			}
+		case diffmatchpatch.DiffInsert:
+			lines := strings.Split(strings.TrimSuffix(d.Text, "\n"), "\n")
+			stats.Added += len(lines)
+			for _, line := range lines {
+				fmt.Fprintf(&diffOutput, "+%s\n", line)
+			}
+		case diffmatchpatch.DiffEqual:
+			lines := strings.Split(strings.TrimSuffix(d.Text, "\n"), "\n")
+			for _, line := range lines {
+				fmt.Fprintf(&diffOutput, " %s\n", line)
+			}
+		}
+	}
+
+	return diffOutput.String(), stats, nil
 }
 
 // getFileContents reads a file's contents
