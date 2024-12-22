@@ -32,6 +32,7 @@ interface GitState {
     commitsLoading: boolean;
     commitsError: string | null;
     HEAD: service.CommitInfo | null;
+    initialized: boolean;
 }
 
 function createGitStore() {
@@ -48,7 +49,8 @@ function createGitStore() {
         commits: [],
         commitsLoading: false,
         commitsError: null,
-        HEAD: null
+        HEAD: null,
+        initialized: false
     });
 
     return {
@@ -61,6 +63,13 @@ function createGitStore() {
                     return;
                 }
 
+                const state = get(this);
+                
+                // If already initialized and is a repository, just return
+                if (state.initialized && state.isRepository) {
+                    return;
+                }
+
                 update(state => ({ ...state, isLoading: true, error: null }));
                 const isRepo = await IsGitRepository(projectPath);
                 update(state => ({ ...state, isRepository: isRepo }));
@@ -69,16 +78,47 @@ function createGitStore() {
                 if (isRepo) {
                     await Promise.all([
                         this.refreshStatus(),
-                        this.refreshBranches()
+                        this.refreshBranches(),
+                        this.loadInitialCommits()
                     ]);
                 }
                 
-                update(state => ({ ...state, isLoading: false }));
+                update(state => ({ ...state, isLoading: false, initialized: true }));
             } catch (error) {
                 update(state => ({
                     ...state,
                     isLoading: false,
-                    error: `Failed to check repository status: ${error}`
+                    error: `Failed to check repository status: ${error}`,
+                    initialized: false
+                }));
+            }
+        },
+
+        async loadInitialCommits() {
+            try {
+                const projectPath = get(fileStore).currentProjectPath;
+                if (!projectPath) {
+                    return;
+                }
+
+                update(state => ({ ...state, commitsLoading: true, commitsError: null }));
+
+                // Load only first 20 commits initially
+                const commits = await ListCommits(projectPath, {
+                    limit: 20,
+                    offset: 0
+                });
+
+                update(state => ({
+                    ...state,
+                    commits,
+                    commitsLoading: false
+                }));
+            } catch (error) {
+                update(state => ({
+                    ...state,
+                    commitsLoading: false,
+                    commitsError: `Failed to load commits: ${error}`
                 }));
             }
         },
@@ -464,7 +504,8 @@ function createGitStore() {
                 commits: [],
                 commitsLoading: false,
                 commitsError: null,
-                HEAD: null
+                HEAD: null,
+                initialized: false
             });
         }
     };
