@@ -230,7 +230,7 @@
         bind:show={showCloseConfirmModal}
         title="Unsaved Changes"
         confirmText="Discard"
-        onConfirm={confirmCloseTab}
+        on:confirm={confirmCloseTab}
     >
         <p>You have unsaved changes in this file. Do you want to discard them?</p>
     </Modal>
