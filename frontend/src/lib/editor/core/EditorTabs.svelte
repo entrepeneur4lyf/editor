@@ -1,11 +1,14 @@
 <script lang="ts">
-    import { X, Circle, ChevronLeft, ChevronRight } from "lucide-svelte";
+    import { X, Circle } from "lucide-svelte";
     import { fileStore } from '@/stores/fileStore';
+    import TabEditor from "./TabEditor.svelte";
     import { createEventDispatcher } from 'svelte';
 
     const dispatch = createEventDispatcher();
 
     let tabsContainer: HTMLDivElement;
+    let editorsContainer: HTMLDivElement;
+    let editors = new Map<string, TabEditor>();
 
     // Convert open files to tabs
     $: tabs = Array.from($fileStore.openFiles.entries()).map(([path, file]) => ({
@@ -14,6 +17,24 @@
         active: path === $fileStore.activeFilePath,
         isDirty: file.isDirty
     }));
+
+    // Initialize editors Map when tabs change
+    $: {
+        const currentPaths = new Set(tabs.map(tab => tab.id));
+        // Remove editors for closed tabs
+        for (const [path] of editors) {
+            if (!currentPaths.has(path)) {
+                editors.delete(path);
+            }
+        }
+        // Add new tabs
+        for (const tab of tabs) {
+            if (!editors.has(tab.id)) {
+                editors.set(tab.id, null);
+            }
+        }
+        editors = editors; // Trigger reactivity
+    }
 
     function setActiveTab(id: string) {
         fileStore.setActiveFile(id);
@@ -52,86 +73,77 @@
         }
     }
 
-    function scrollTabs(direction: 'left' | 'right') {
+    function handleWheel(event: WheelEvent) {
         if (tabsContainer) {
-            const scrollAmount = 200;
-            const targetScroll = tabsContainer.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount);
-            tabsContainer.scrollTo({
-                left: targetScroll,
-                behavior: 'smooth'
-            });
+            event.preventDefault();
+            tabsContainer.scrollLeft += event.deltaY;
         }
     }
 
-    function handleTabClick(event: MouseEvent, id: string) {
+    function handleMouseUp(event: MouseEvent, id: string) {
         if (event.button === 1) { // Middle click
             event.preventDefault();
             handleCloseTab(id);
         }
     }
 
-    // Watch for active file changes
+    // Watch for active file changes and scroll to active tab
     $: if ($fileStore.activeFilePath) {
         setTimeout(() => scrollToTab($fileStore.activeFilePath!), 0);
     }
+
+    // Layout all editors
+    export function layout() {
+        editors.forEach(editor => editor.layout());
+    }
 </script>
 
-<div class="flex items-center border-b border-gray-800 bg-gray-900 relative">
-    <div 
+<div class="flex flex-col h-full">
+    <!-- Tabs -->
+    <div class="flex items-center bg-gray-900 border-b border-gray-700 overflow-x-auto scrollbar-hide relative" 
         bind:this={tabsContainer}
-        class="flex overflow-x-scroll scrollbar-hide relative flex-1"
-    >
+        on:wheel={handleWheel}>
         {#each tabs as tab (tab.id)}
-            <button
+            <button class="flex items-center min-w-0 group"
+                class:bg-gray-800={tab.active}
+                class:border-t-2={tab.active}
+                class:border-blue-500={tab.active}
+                class:border-transparent={!tab.active}
                 data-tab-id={tab.id}
-                class="flex items-center h-[34px] px-4 border-r border-gray-800 cursor-pointer relative
-                    {tab.active
-                        ? 'bg-gray-900 before:absolute before:top-0 before:left-0 before:right-0 before:h-[2px] before:bg-sky-500'
-                        : 'bg-gray-800 hover:bg-gray-700'} 
-                    transition-colors duration-200"
                 on:click={() => setActiveTab(tab.id)}
-                on:mouseup={(e) => handleTabClick(e, tab.id)}
-            >
-                <span class="flex items-center gap-2">
+                on:mouseup={(e) => handleMouseUp(e, tab.id)}>
+                <div class="flex items-center px-3 py-1.5 gap-2 hover:bg-gray-800">
                     {#if tab.isDirty}
-                        <Circle size={8} class="fill-current text-gray-300" />
+                        <Circle size={8} class="text-gray-500" />
                     {/if}
-                    {tab.name}
-                </span>
-                <button
-                    on:click|stopPropagation={() => handleCloseTab(tab.id)}
-                    class="ml-2 text-gray-400 hover:text-gray-100 transition-colors duration-200"
-                    aria-label="Close {tab.name}"
-                >
-                    <X size={14} />
-                </button>
+                    <span class="truncate text-sm">{tab.name}</span>
+                    <button
+                        class="opacity-0 group-hover:opacity-100 hover:bg-gray-700 rounded p-0.5"
+                        on:click|stopPropagation={() => handleCloseTab(tab.id)}>
+                        <X size={14} />
+                    </button>
+                </div>
             </button>
         {/each}
     </div>
-    <div class="flex items-center gap-1 border-gray-800 bg-gray-900 pl-1 sticky right-0">
-        <button
-            on:click={() => scrollTabs('left')}
-            class="p-1.5 hover:bg-gray-800 transition-colors duration-200 rounded-md border border-gray-700"
-            aria-label="Scroll tabs left"
-        >
-            <ChevronLeft size={16} />
-        </button>
-        <button
-            on:click={() => scrollTabs('right')}
-            class="p-1.5 hover:bg-gray-800 transition-colors duration-200 rounded-md border border-gray-700"
-            aria-label="Scroll tabs right"
-        >
-            <ChevronRight size={16} />
-        </button>
+
+    <!-- Editors -->
+    <div class="flex-1 relative" bind:this={editorsContainer}>
+        {#each tabs as tab (tab.id)}
+            <TabEditor 
+                filepath={tab.id}
+                active={tab.active}
+            />
+        {/each}
     </div>
 </div>
 
 <style>
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
     .scrollbar-hide {
         -ms-overflow-style: none;
         scrollbar-width: none;
-    }
-    .scrollbar-hide::-webkit-scrollbar {
-        display: none;
     }
 </style>

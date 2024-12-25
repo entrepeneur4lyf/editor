@@ -12,7 +12,6 @@
     import { gitStore } from '@/stores/gitStore';
     import { registerCommand, setKeyboardContext } from '@/stores/keyboardStore';
     import { get } from 'svelte/store';
-    import MonacoEditor from "@/lib/editor/core/MonacoEditor.svelte";
     import EditorTabs from "@/lib/editor/core/EditorTabs.svelte";
     import FileFinderPallete from "@/lib/components/palletes/FileFinderPallete.svelte";
     import GitCommitPallete from "@/lib/components/palletes/GitCommitPallete.svelte";
@@ -20,6 +19,8 @@
     import BottomPane from "@/lib/editor/panes/BottomPane.svelte";
     import { focusStore } from '@/stores/focusStore';
     import { bottomPaneStore } from '@/stores/bottomPaneStore';
+
+    let editorTabs: { layout: () => void } | null = null;
 
     // Convert open files to tabs
     $: tabs = Array.from($fileStore.openFiles.entries()).map(([path, file]) => ({
@@ -57,7 +58,7 @@
     let showCloseConfirmModal = false;
     let fileToClose: string | null = null;
 
-    function handleTabCloseRequest(event: CustomEvent<{ id: string }>) {
+    function handleCloseRequest(event: CustomEvent<{ id: string }>) {
         fileToClose = event.detail.id;
         showCloseConfirmModal = true;
     }
@@ -81,7 +82,8 @@
     }
 
     function handleResize() {
-        editor?.layout();
+        // Call layout on the EditorTabs component
+        editorTabs?.layout();
     }
 
     function toggleSourceControl() {
@@ -167,26 +169,34 @@
     />
     
     <div class="flex flex-1 overflow-hidden">
+        <!-- Left sidebar -->
+        <div
+            class="h-full"
+            class:w-0={leftSidebarState.collapsed}
+            class:w-auto={!leftSidebarState.collapsed}
+            style={!leftSidebarState.collapsed ? `width: ${leftSidebarWidth}px` : ''}
+        >
+            <LeftSidebar bind:state={leftSidebarState} />
+        </div>
+
         {#if !leftSidebarState.collapsed}
-            <div class="h-full" style="width: {leftSidebarWidth}px">
-                <LeftSidebar state={leftSidebarState} />
-            </div>
             <ResizeHandle
                 orientation="vertical"
                 side="right"
                 bind:size={leftSidebarWidth}
                 minSize={200}
                 maxSize={600}
+                on:resize={handleResize}
             />
         {/if}
 
-        
-        <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-            <EditorTabs on:closeRequest={handleTabCloseRequest} />
+        <!-- Main editor area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <EditorTabs
+                bind:this={editorTabs}
+                on:closeRequest={handleCloseRequest}
+            />
 
-            <div class="flex-1 relative overflow-hidden">
-                <MonacoEditor />
-            </div>
             {#if !$bottomPaneStore.collapsed}
                 <ResizeHandle 
                     orientation="horizontal" 
@@ -194,11 +204,12 @@
                     bind:size={bottomPaneHeight}
                     minSize={100} 
                     maxSize={800}
+                    on:resize={handleResize}
                 />
                 <BottomPane state={$bottomPaneStore} height={bottomPaneHeight} />
             {/if}
-        </main>
-        
+        </div>
+
         {#if !rightSidebarCollapsed}
             <ResizeHandle
                 orientation="vertical"
@@ -206,11 +217,19 @@
                 bind:size={rightSidebarWidth}
                 minSize={200}
                 maxSize={800}
+                on:resize={handleResize}
             />
-            <div class="h-full" style="width: {rightSidebarWidth}px">
-                <RightSidebar />
-            </div>
         {/if}
+
+        <!-- Right sidebar -->
+        <div
+            class="h-full"
+            class:w-0={rightSidebarCollapsed}
+            class:w-auto={!rightSidebarCollapsed}
+            style={!rightSidebarCollapsed ? `width: ${rightSidebarWidth}px` : ''}
+        >
+            <RightSidebar bind:collapsed={rightSidebarCollapsed} />
+        </div>
     </div>
 
     <BottomBar />
