@@ -9,6 +9,7 @@
     import Breadcrumbs from "@/lib/editor/Breadcrumbs.svelte";
     import DiffHeader from "@/lib/editor/git/changes/DiffHeader.svelte";
     import { addKeyboardContext } from '@/stores/keyboardStore';
+    import { GetFileContent } from '@/lib/wailsjs/go/main/App';
 
     const dispatch = createEventDispatcher();
 
@@ -48,7 +49,48 @@
         }
     }
 
-    onMount(() => {
+    function parseDiff(diffContent: string): { original: string; modified: string } {
+        const lines = diffContent.split('\n');
+        let original = '';
+        let modified = '';
+        let contentStarted = false;
+        
+        for (const line of lines) {
+            // Skip the first two lines (--- and +++)
+            if (line.startsWith('---') || line.startsWith('+++')) {
+                continue;
+            }
+            
+            // If we find an @@ line, mark content as started
+            if (line.startsWith('@@')) {
+                contentStarted = true;
+                continue;
+            }
+            
+            // If we haven't found an @@ line and we're past the headers,
+            // treat everything as content
+            if (!contentStarted && !line.startsWith('---') && !line.startsWith('+++')) {
+                contentStarted = true;
+            }
+            
+            if (!contentStarted) {
+                continue;
+            }
+
+            if (line.startsWith('-')) {
+                original += line.slice(1) + '\n';
+            } else if (line.startsWith('+')) {
+                modified += line.slice(1) + '\n';
+            } else {
+                original += line + '\n';
+                modified += line + '\n';
+            }
+        }
+        
+        return { original: original.trimEnd(), modified: modified.trimEnd() };
+    }
+
+    onMount(async () => {
         if (!editorContainer) return;
 
         // Create editor with initial config
@@ -81,14 +123,18 @@
                 readOnly: true,
                 originalEditable: false,
                 modifiedEditable: false,
-                renderSideBySide: true,
-                ignoreTrimWhitespace: false
+                renderSideBySide: false,
+                ignoreTrimWhitespace: false,
+                enableSplitViewResizing: false
             });
 
-            const model = monaco.editor.createModel(content, language);
+            const { original, modified } = parseDiff(content);
+            const originalModel = monaco.editor.createModel(original, language);
+            const modifiedModel = monaco.editor.createModel(modified, language);
+            
             (editor as monaco.editor.IStandaloneDiffEditor).setModel({
-                original: monaco.editor.createModel('', language),
-                modified: model
+                original: originalModel,
+                modified: modifiedModel
             });
         } else {
             editor = monaco.editor.create(editorContainer, {
@@ -165,10 +211,13 @@
     // Watch for content changes from fileStore
     $: if (editor && content !== getEditorContent()) {
         if (isDiff) {
-            const model = monaco.editor.createModel(content, language);
+            const { original, modified } = parseDiff(content);
+            const originalModel = monaco.editor.createModel(original, language);
+            const modifiedModel = monaco.editor.createModel(modified, language);
+            
             (editor as monaco.editor.IStandaloneDiffEditor).setModel({
-                original: monaco.editor.createModel('', language),
-                modified: model
+                original: originalModel,
+                modified: modifiedModel
             });
         } else {
             (editor as monaco.editor.IStandaloneCodeEditor).setValue(content);
