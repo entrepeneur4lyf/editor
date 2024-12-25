@@ -4,6 +4,7 @@ import { GetProjectFiles, GetFileContent, SaveFile, CreateFile, CreateDirectory,
 import { getLanguageFromPath } from '@/lib/utils/languageMap';
 
 type FileNode = service.FileNode;
+type DiffStats = service.DiffStats;
 
 interface OpenFile {
     path: string;
@@ -11,6 +12,8 @@ interface OpenFile {
     isDirty: boolean;
     language: string;
     cursor: { line: number; column: number };
+    type: 'file' | 'diff';
+    stats?: DiffStats;
 }
 
 interface FileState {
@@ -138,7 +141,8 @@ function createFileStore() {
                         content,
                         isDirty: false,
                         language: getLanguageFromPath(path),
-                        cursor: { line: 0, column: 0 }
+                        cursor: { line: 0, column: 0 },
+                        type: 'file'
                     };
                     newOpenFiles.set(path, openFile);
                     return {
@@ -156,7 +160,7 @@ function createFileStore() {
         },
 
         // Open a virtual file (for diffs, etc.)
-        openVirtualFile: (path: string, content: string, language: string) => {
+        openVirtualFile: (path: string, content: string, language: string, type: 'file' | 'diff', stats?: DiffStats) => {
             update(state => {
                 // Create virtual file
                 const virtualFile: OpenFile = {
@@ -164,7 +168,9 @@ function createFileStore() {
                     content,
                     isDirty: false,
                     language,
-                    cursor: { line: 0, column: 0 }
+                    cursor: { line: 0, column: 0 },
+                    type,
+                    stats
                 };
                 
                 // Add to open files

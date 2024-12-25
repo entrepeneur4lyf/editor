@@ -5,7 +5,10 @@
 
     export let filepath: string;
 
-    $: stats = $gitStore.fileDiff?.stats || { added: 0, deleted: 0, modified: 0 };
+    $: currentFile = $fileStore.openFiles.get(filepath);
+    $: stats = currentFile?.type === 'diff' && currentFile?.stats 
+        ? currentFile.stats 
+        : { added: 0, deleted: 0, modified: 0 };
 </script>
 
 <div class="flex items-center px-4 py-1.5 bg-gray-900 border-b border-gray-700 sticky top-0 z-10">
