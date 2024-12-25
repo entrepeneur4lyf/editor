@@ -1,5 +1,6 @@
 <script lang="ts">
     import * as monaco from 'monaco-editor';
+    import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
     import { onMount, onDestroy, createEventDispatcher } from 'svelte';
     import { fileStore } from '@/stores/fileStore';
     import { editorConfigStore } from '@/stores/editorConfigStore';
@@ -90,7 +91,7 @@
         return { original: original.trimEnd(), modified: modified.trimEnd() };
     }
 
-    onMount(async () => {
+    onMount(() => {
         if (!editorContainer) return;
 
         // Create editor with initial config
@@ -117,6 +118,13 @@
             }
         };
 
+        // Setup Monaco worker
+        self.MonacoEnvironment = {
+            getWorker: function (_moduleId: string, label: string) {
+                return new EditorWorker();
+            }
+        };
+
         if (isDiff) {
             editor = monaco.editor.createDiffEditor(editorContainer, {
                 ...baseOptions,
@@ -136,6 +144,11 @@
                 original: originalModel,
                 modified: modifiedModel
             });
+
+            return () => {
+                originalModel.dispose();
+                modifiedModel.dispose();
+            };
         } else {
             editor = monaco.editor.create(editorContainer, {
                 ...baseOptions,

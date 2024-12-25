@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { X, Circle } from "lucide-svelte";
+    import { X, Circle, ChevronLeft, ChevronRight } from "lucide-svelte";
     import { fileStore } from '@/stores/fileStore';
     import { editorInstanceStore } from '@/stores/editorInstanceStore';
     import TabEditor from "./TabEditor.svelte";
@@ -56,10 +56,14 @@
         }
     }
 
-    function handleWheel(event: WheelEvent) {
+    function scrollTabs(direction: 'left' | 'right') {
         if (tabsContainer) {
-            event.preventDefault();
-            tabsContainer.scrollLeft += event.deltaY;
+            const scrollAmount = 200;
+            const newScrollLeft = tabsContainer.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount);
+            tabsContainer.scrollTo({
+                left: newScrollLeft,
+                behavior: 'smooth'
+            });
         }
     }
 
@@ -67,6 +71,15 @@
         if (event.button === 1) { // Middle click
             event.preventDefault();
             handleCloseTab(id);
+        }
+    }
+
+    function handleWheel(event: WheelEvent) {
+        if (!event.shiftKey) return;
+        event.preventDefault();
+        
+        if (tabsContainer) {
+            tabsContainer.scrollLeft += event.deltaY;
         }
     }
 
@@ -81,33 +94,50 @@
     }
 </script>
 
+{#if tabs.length > 0}
 <div class="flex flex-col h-full">
     <!-- Tabs -->
-    <div class="flex items-center bg-gray-900 border-b border-gray-700 overflow-x-auto scrollbar-hide relative" 
-        bind:this={tabsContainer}
-        on:wheel={handleWheel}>
-        {#each tabs as tab (tab.id)}
-            <button class="flex items-center min-w-0 group"
-                class:bg-gray-800={tab.active}
-                class:border-t-2={tab.active}
-                class:border-blue-500={tab.active}
-                class:border-transparent={!tab.active}
-                data-tab-id={tab.id}
-                on:click={() => setActiveTab(tab.id)}
-                on:mouseup={(e) => handleMouseUp(e, tab.id)}>
-                <div class="flex items-center px-3 py-1.5 gap-2 hover:bg-gray-800">
+    <div class="flex items-center bg-gray-900 border-b border-gray-700">
+        <div class="flex-1 flex items-center overflow-y-hidden overflow-x-auto scrollbar-hide relative" 
+            bind:this={tabsContainer}
+            on:wheel={handleWheel}>
+            {#each tabs as tab (tab.id)}
+                <button class="flex items-center h-[35px] px-4 border-r border-gray-700 hover:bg-gray-700 transition-colors duration-200 gap-2 group whitespace-nowrap relative"
+                    class:bg-gray-800={tab.active}
+                    class:after:absolute={tab.active}
+                    class:after:top-0={tab.active}
+                    class:after:left-0={tab.active}
+                    class:after:right-0={tab.active}
+                    class:after:h-[2px]={tab.active}
+                    class:after:bg-blue-500={tab.active}
+                    data-tab-id={tab.id}
+                    on:click={() => setActiveTab(tab.id)}
+                    on:mouseup={(e) => handleMouseUp(e, tab.id)}>
                     {#if tab.isDirty}
                         <Circle size={8} class="text-gray-500" />
                     {/if}
-                    <span class="truncate text-sm">{tab.name}</span>
-                    <button
-                        class="opacity-0 group-hover:opacity-100 hover:bg-gray-700 rounded p-0.5"
+                    <span class="truncate">{tab.name}</span>
+                    <button class="opacity-0 group-hover:opacity-100  transition-opacity duration-200 hover:rounded-sm p-0.5 hover:bg-gray-600"
                         on:click|stopPropagation={() => handleCloseTab(tab.id)}>
                         <X size={14} />
                     </button>
-                </div>
+                </button>
+            {/each}
+        </div>
+        <div class="flex items-center gap-1 border-l border-gray-700 bg-gray-900 pl-1 sticky right-0">
+            <button
+                on:click={() => scrollTabs('left')}
+                class="p-1.5 hover:bg-gray-800 transition-colors duration-200 text-gray-400 hover:text-gray-300"
+            >
+                <ChevronLeft size={16} />
             </button>
-        {/each}
+            <button
+                on:click={() => scrollTabs('right')}
+                class="p-1.5 hover:bg-gray-800 transition-colors duration-200 text-gray-400 hover:text-gray-300"
+            >
+                <ChevronRight size={16} />
+            </button>
+        </div>
     </div>
 
     <!-- Editors -->
@@ -126,13 +156,34 @@
         {/each}
     </div>
 </div>
+{/if}
 
 <style>
-    .scrollbar-hide::-webkit-scrollbar {
-        display: none;
-    }
+    /* Hide default scrollbar */
     .scrollbar-hide {
         -ms-overflow-style: none;
         scrollbar-width: none;
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Custom scrollbar overlay */
+    .scrollbar-hide:hover::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 3px;
+        background: rgba(156, 163, 175, 0.3);
+        pointer-events: none;
+        opacity: 0;
+        animation: fadeIn 0.2s ease forwards;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 </style>
