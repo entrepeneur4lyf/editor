@@ -17,7 +17,7 @@
     export let active = false;
 
     let editorContainer: HTMLElement;
-    let editor: monaco.editor.IStandaloneCodeEditor;
+    let editor: monaco.editor.IStandaloneCodeEditor | monaco.editor.IStandaloneDiffEditor;
     let vimMode: { dispose: () => void } | null = null;
     let vimStatusBar: HTMLElement;
     let vimEnabled = false;
@@ -27,6 +27,7 @@
     $: file = $fileStore.openFiles.get(filepath);
     $: content = file?.content || '';
     $: language = file?.language || 'plaintext';
+    $: isDiff = file?.type === 'diff';
     $: state = $editorStateStore[filepath];
 
     // Export layout function for parent to call
@@ -41,17 +42,13 @@
 
         // Create editor with initial config
         const config = $editorConfigStore.editor;
-        editor = monaco.editor.create(editorContainer, {
-            value: content,
-            language,
+        const baseOptions = {
             theme: config.theme,
             fontSize: config.fontSize,
             tabSize: config.tabSize,
             wordWrap: config.wordWrap ? 'on' : 'off',
             lineNumbers: config.lineNumbers ? (config.relativeLines ? 'relative' : 'on') : 'off',
-            minimap: {
-                enabled: config.minimap
-            },
+            minimap: { enabled: config.minimap },
             automaticLayout: true,
             scrollBeyondLastLine: false,
             glyphMargin: true,
@@ -65,50 +62,70 @@
             stickyScroll: {
                 enabled: config.stickyScroll
             }
-        });
+        };
 
-        // Dispatch editor instance to parent
-        dispatch('mount', editor);
+        if (isDiff) {
+            editor = monaco.editor.createDiffEditor(editorContainer, {
+                ...baseOptions,
+                readOnly: true,
+                originalEditable: false,
+                modifiedEditable: false,
+                renderSideBySide: true,
+                ignoreTrimWhitespace: false
+            });
 
-        // Setup vim mode if enabled
-        if (config.vimMode) {
-            vimStatusBar = document.createElement('div');
-            vimStatusBar.className = 'vim-status-bar absolute bottom-0 left-0 bg-gray-800 text-gray-300 px-2 py-0.5 text-sm';
-            editorContainer.appendChild(vimStatusBar);
-            vimMode = initVimMode(editor, vimStatusBar);
-            vimEnabled = true;
+            const model = monaco.editor.createModel(content, language);
+            (editor as monaco.editor.IStandaloneDiffEditor).setModel({
+                original: monaco.editor.createModel('', language),
+                modified: model
+            });
+        } else {
+            editor = monaco.editor.create(editorContainer, {
+                ...baseOptions,
+                value: content,
+                language
+            });
+
+            // Setup vim mode if enabled
+            if (config.vimMode) {
+                vimStatusBar = document.createElement('div');
+                vimStatusBar.className = 'vim-status-bar absolute bottom-0 left-0 bg-gray-800 text-gray-300 px-2 py-0.5 text-sm';
+                editorContainer.appendChild(vimStatusBar);
+                vimMode = initVimMode(editor, vimStatusBar);
+                vimEnabled = true;
+            }
+
+            // Watch for content changes
+            const disposable = editor.onDidChangeModelContent(() => {
+                const value = editor.getValue();
+                if (value !== content) {
+                    fileStore.updateFileContent(filepath, value);
+                }
+            });
+
+            // Save file on Ctrl+S
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
+                try {
+                    await fileStore.saveFile(filepath);
+                } catch (error) {
+                    console.error('Error saving file:', error);
+                }
+            });
+
+            return () => {
+                disposable.dispose();
+            };
         }
 
         // Add keyboard context
         addKeyboardContext('editor');
 
-        // Watch for content changes
-        const disposable = editor.onDidChangeModelContent(() => {
-            const value = editor.getValue();
-            if (value !== content) {
-                fileStore.updateFileContent(filepath, value);
-            }
-        });
-
-        // Save file on Ctrl+S
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
-            try {
-                await fileStore.saveFile(filepath);
-            } catch (error) {
-                console.error('Error saving file:', error);
-            }
-        });
-
-        return () => {
-            disposable.dispose();
-        };
+        // Dispatch editor instance to parent
+        dispatch('mount', editor);
     });
 
     onDestroy(() => {
         if (editor) {
-            // Save editor state before destroying
-            editorStateStore.saveState(filepath, editor);
-            
             // Cleanup vim mode
             if (vimMode) {
                 vimMode.dispose();
@@ -136,7 +153,15 @@
 
     // Watch for content changes from fileStore
     $: if (editor && content !== editor.getValue()) {
-        editor.setValue(content);
+        if (isDiff) {
+            const model = monaco.editor.createModel(content, language);
+            (editor as monaco.editor.IStandaloneDiffEditor).setModel({
+                original: monaco.editor.createModel('', language),
+                modified: model
+            });
+        } else {
+            editor.setValue(content);
+        }
     }
 
     // Handle active state
@@ -154,18 +179,13 @@
             <Breadcrumbs {filepath} />
         {/if}
     {/if}
-
-    <div class="flex-1 relative" bind:this={editorContainer}></div>
-    
+    <div bind:this={editorContainer} class="flex-1 relative" />
     {#if vimEnabled}
-        <div class="vim-status-bar" bind:this={vimStatusBar}></div>
+        <div class="vim-status-bar" bind:this={vimStatusBar} />
     {/if}
 </div>
 
 <style>
-    .hidden {
-        display: none;
-    }
     .vim-status-bar {
         position: absolute;
         bottom: 0;
