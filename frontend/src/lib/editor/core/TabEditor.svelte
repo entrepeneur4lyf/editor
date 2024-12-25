@@ -82,6 +82,14 @@
         // Add keyboard context
         addKeyboardContext('editor');
 
+        // Watch for content changes
+        const disposable = editor.onDidChangeModelContent(() => {
+            const value = editor.getValue();
+            if (value !== content) {
+                fileStore.updateFileContent(filepath, value);
+            }
+        });
+
         // Save file on Ctrl+S
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
             try {
@@ -90,17 +98,6 @@
                 console.error('Error saving file:', error);
             }
         });
-
-        // Watch for content changes
-        const disposable = editor.onDidChangeModelContent(() => {
-            const value = editor.getValue();
-            fileStore.updateFileContent(filepath, value);
-        });
-
-        // Restore editor state if exists
-        if ($editorStateStore[filepath]) {
-            editorStateStore.restoreState(filepath, editor);
-        }
 
         return () => {
             disposable.dispose();
@@ -139,11 +136,7 @@
 
     // Watch for content changes from fileStore
     $: if (editor && content !== editor.getValue()) {
-        const position = editor.getPosition();
         editor.setValue(content);
-        if (position) {
-            editor.setPosition(position);
-        }
     }
 
     // Handle active state

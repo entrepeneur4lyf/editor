@@ -11,7 +11,6 @@ interface OpenFile {
     content: string;
     isDirty: boolean;
     language: string;
-    cursor: { line: number; column: number };
     type: 'file' | 'diff';
     stats?: DiffStats;
 }
@@ -141,7 +140,6 @@ function createFileStore() {
                         content,
                         isDirty: false,
                         language: getLanguageFromPath(path),
-                        cursor: { line: 0, column: 0 },
                         type: 'file'
                     };
                     newOpenFiles.set(path, openFile);
@@ -168,16 +166,19 @@ function createFileStore() {
                     content,
                     isDirty: false,
                     language,
-                    cursor: { line: 0, column: 0 },
                     type,
                     stats
                 };
                 
                 // Add to open files
-                state.openFiles.set(path, virtualFile);
-                state.activeFilePath = path;
+                const openFiles = new Map(state.openFiles);
+                openFiles.set(path, virtualFile);
                 
-                return state;
+                return {
+                    ...state,
+                    openFiles,
+                    activeFilePath: path
+                };
             });
         },
 
@@ -229,12 +230,16 @@ function createFileStore() {
         // Update file content
         updateFileContent(path: string, content: string, isDirty = true) {
             update(state => {
-                const file = state.openFiles.get(path);
-                if (!file) return state;
-
-                const newOpenFiles = new Map(state.openFiles);
-                newOpenFiles.set(path, { ...file, content, isDirty });
-                return { ...state, openFiles: newOpenFiles };
+                const openFiles = new Map(state.openFiles);
+                const file = openFiles.get(path);
+                if (file) {
+                    openFiles.set(path, {
+                        ...file,
+                        content,
+                        isDirty
+                    });
+                }
+                return { ...state, openFiles };
             });
         },
 
