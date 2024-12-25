@@ -8,6 +8,7 @@
     import { createEventDispatcher } from 'svelte';
     import { focusStore } from '@/stores/focusStore';
     import Breadcrumbs from "@/lib/editor/Breadcrumbs.svelte";
+    import DiffHeader from "@/lib/editor/git/changes/DiffHeader.svelte";
     import { addKeyboardContext } from '@/stores/keyboardStore';
 
     const dispatch = createEventDispatcher();
@@ -257,7 +258,11 @@
 
 <div class="h-full relative flex flex-col">
     {#if $fileStore.activeFilePath}
-        <Breadcrumbs filepath={$fileStore.activeFilePath} />
+        {#if $fileStore.activeFilePath.startsWith('[diff]')}
+            <DiffHeader filepath={$fileStore.activeFilePath} />
+        {:else}
+            <Breadcrumbs filepath={$fileStore.activeFilePath} />
+        {/if}
     {/if}
     
     <div class="flex-1 relative">

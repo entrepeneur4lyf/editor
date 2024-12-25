@@ -154,6 +154,26 @@ function createFileStore() {
             }
         },
 
+        // Open a virtual file (for diffs, etc.)
+        openVirtualFile: (path: string, content: string, language: string) => {
+            update(state => {
+                // Create virtual file
+                const virtualFile: OpenFile = {
+                    path,
+                    content,
+                    isDirty: false,
+                    language,
+                    cursor: { line: 0, column: 0 }
+                };
+                
+                // Add to open files
+                state.openFiles.set(path, virtualFile);
+                state.activeFilePath = path;
+                
+                return state;
+            });
+        },
+
         // Close a file
         closeFile(path: string) {
             update(state => {
