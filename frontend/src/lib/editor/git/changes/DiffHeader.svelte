@@ -5,27 +5,7 @@
 
     export let filepath: string;
 
-    // Get the diff stats from the virtual file content
-    $: virtualFile = $fileStore.openFiles.get(filepath);
-    $: content = virtualFile?.content || '';
-
-    // Parse the diff stats from the first line which should be in JSON format
-    $: stats = (() => {
-        try {
-            const firstLine = content.split('\n')[0];
-            if (firstLine.startsWith('{"stats":')) {
-                const data = JSON.parse(firstLine);
-                return {
-                    added: data.stats.added || 0,
-                    removed: data.stats.deleted || 0,
-                    modified: data.stats.modified || 0
-                };
-            }
-        } catch (e) {
-            console.error('Failed to parse diff stats:', e);
-        }
-        return { added: 0, removed: 0, modified: 0 };
-    })();
+    $: stats = $gitStore.fileDiff?.stats || { added: 0, deleted: 0, modified: 0 };
 </script>
 
 <div class="flex items-center px-4 py-1.5 bg-gray-900 border-b border-gray-700 sticky top-0 z-10">
@@ -40,7 +20,7 @@
             </div>
             <div class="flex items-center gap-1 text-sm">
                 <Minus size={14} class="text-red-500" />
-                <span class="text-red-500">{stats.removed}</span>
+                <span class="text-red-500">{stats.deleted}</span>
             </div>
         </div>
     </div>

@@ -559,9 +559,7 @@ function createGitStore() {
                 if (diff.isBinary) {
                     fileStore.openVirtualFile(virtualPath, "Binary file not shown", "text");
                 } else {
-                    // Add stats as JSON in the first line
-                    const content = `{"stats":${JSON.stringify(diff.stats)}}\n${diff.content}`;
-                    fileStore.openVirtualFile(virtualPath, content, "diff");
+                    fileStore.openVirtualFile(virtualPath, diff.content, "diff");
                 }
             } catch (error) {
                 console.error(`Failed to load diff: ${error}`);
