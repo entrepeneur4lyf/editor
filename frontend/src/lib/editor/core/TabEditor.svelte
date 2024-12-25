@@ -9,7 +9,6 @@
     import Breadcrumbs from "@/lib/editor/Breadcrumbs.svelte";
     import DiffHeader from "@/lib/editor/git/changes/DiffHeader.svelte";
     import { addKeyboardContext } from '@/stores/keyboardStore';
-    import { get } from 'svelte/store';
 
     const dispatch = createEventDispatcher();
 
@@ -34,6 +33,18 @@
     export function layout() {
         if (editor) {
             editor.layout();
+        }
+    }
+
+    // Helper function to get editor content
+    function getEditorContent(): string {
+        if (!editor) return '';
+        
+        if (isDiff) {
+            const diffEditor = editor as monaco.editor.IStandaloneDiffEditor;
+            return diffEditor.getModifiedEditor().getValue();
+        } else {
+            return (editor as monaco.editor.IStandaloneCodeEditor).getValue();
         }
     }
 
@@ -97,7 +108,7 @@
 
             // Watch for content changes
             const disposable = editor.onDidChangeModelContent(() => {
-                const value = editor.getValue();
+                const value = getEditorContent();
                 if (value !== content) {
                     fileStore.updateFileContent(filepath, value);
                 }
@@ -152,7 +163,7 @@
     }
 
     // Watch for content changes from fileStore
-    $: if (editor && content !== editor.getValue()) {
+    $: if (editor && content !== getEditorContent()) {
         if (isDiff) {
             const model = monaco.editor.createModel(content, language);
             (editor as monaco.editor.IStandaloneDiffEditor).setModel({
@@ -160,7 +171,7 @@
                 modified: model
             });
         } else {
-            editor.setValue(content);
+            (editor as monaco.editor.IStandaloneCodeEditor).setValue(content);
         }
     }
 
