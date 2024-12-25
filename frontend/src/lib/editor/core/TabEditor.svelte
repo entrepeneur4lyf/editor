@@ -94,6 +94,9 @@
     onMount(() => {
         if (!editorContainer) return;
 
+        // Add keyboard context
+        addKeyboardContext('editor');
+
         // Create editor with initial config
         const config = $editorConfigStore.editor;
         const baseOptions = {
@@ -187,11 +190,6 @@
             };
         }
 
-        // Add keyboard context
-        addKeyboardContext('editor');
-
-        // Dispatch editor instance to parent
-        dispatch('mount', editor);
     });
 
     onDestroy(() => {
