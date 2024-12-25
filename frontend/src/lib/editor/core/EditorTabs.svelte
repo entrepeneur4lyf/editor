@@ -1,6 +1,7 @@
 <script lang="ts">
     import { X, Circle } from "lucide-svelte";
     import { fileStore } from '@/stores/fileStore';
+    import { editorInstanceStore } from '@/stores/editorInstanceStore';
     import TabEditor from "./TabEditor.svelte";
     import { createEventDispatcher } from 'svelte';
 
@@ -8,7 +9,6 @@
 
     let tabsContainer: HTMLDivElement;
     let editorsContainer: HTMLDivElement;
-    let editors = new Map<string, TabEditor>();
 
     // Convert open files to tabs
     $: tabs = Array.from($fileStore.openFiles.entries()).map(([path, file]) => ({
@@ -17,24 +17,6 @@
         active: path === $fileStore.activeFilePath,
         isDirty: file.isDirty
     }));
-
-    // Initialize editors Map when tabs change
-    $: {
-        const currentPaths = new Set(tabs.map(tab => tab.id));
-        // Remove editors for closed tabs
-        for (const [path] of editors) {
-            if (!currentPaths.has(path)) {
-                editors.delete(path);
-            }
-        }
-        // Add new tabs
-        for (const tab of tabs) {
-            if (!editors.has(tab.id)) {
-                editors.set(tab.id, null);
-            }
-        }
-        editors = editors; // Trigger reactivity
-    }
 
     function setActiveTab(id: string) {
         fileStore.setActiveFile(id);
@@ -52,6 +34,7 @@
     }
 
     function closeTab(id: string) {
+        editorInstanceStore.removeEditor(id);
         fileStore.closeFile(id);
         dispatch('close', { id });
     }
@@ -94,7 +77,7 @@
 
     // Layout all editors
     export function layout() {
-        editors.forEach(editor => editor.layout());
+        $editorInstanceStore.forEach(editor => editor?.layout());
     }
 </script>
 
@@ -133,6 +116,7 @@
             <TabEditor 
                 filepath={tab.id}
                 active={tab.active}
+                on:mount={({ detail }) => editorInstanceStore.setEditor(tab.id, detail)}
             />
         {/each}
     </div>
