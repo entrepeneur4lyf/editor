@@ -67,6 +67,9 @@
             }
         });
 
+        // Dispatch editor instance to parent
+        dispatch('mount', editor);
+
         // Setup vim mode if enabled
         if (config.vimMode) {
             vimStatusBar = document.createElement('div');

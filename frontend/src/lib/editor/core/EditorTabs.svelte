@@ -116,7 +116,12 @@
             <TabEditor 
                 filepath={tab.id}
                 active={tab.active}
-                on:mount={({ detail }) => editorInstanceStore.setEditor(tab.id, detail)}
+                on:mount={(event) => {
+                    const editor = event.detail;
+                    if (editor) {
+                        editorInstanceStore.setEditor(tab.id, editor);
+                    }
+                }}
             />
         {/each}
     </div>

@@ -1,6 +1,7 @@
 import { writable, get } from 'svelte/store';
 import type { service } from '@/lib/wailsjs/go/models';
 import { GetProjectFiles, GetFileContent, SaveFile, CreateFile, CreateDirectory, RenameFile, DeleteFile, LoadDirectoryContents } from '@/lib/wailsjs/go/main/App';
+import { getLanguageFromPath } from '@/lib/utils/languageMap';
 
 type FileNode = service.FileNode;
 
@@ -136,7 +137,7 @@ function createFileStore() {
                         path,
                         content,
                         isDirty: false,
-                        language: path.split('.').pop() || 'text',
+                        language: getLanguageFromPath(path),
                         cursor: { line: 0, column: 0 }
                     };
                     newOpenFiles.set(path, openFile);
