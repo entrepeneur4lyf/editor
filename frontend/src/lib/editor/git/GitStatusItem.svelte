@@ -43,7 +43,6 @@
         e.stopPropagation();
         gitStore.getDiff(item.file, isStaged);
     }}
-    class:bg-gray-800={$gitStore.selectedFile === item.file && $gitStore.selectedFileStaged === isStaged}
 >
     <div class="flex items-center px-2 w-full">
         {#if $gitStore.loadingFiles.has(item.file)}

@@ -5,24 +5,27 @@
 
     export let filepath: string;
 
-    $: diff = $gitStore.fileDiff;
-    $: stats = diff ? calculateDiffStats(diff.content) : { added: 0, removed: 0 };
+    // Get the diff stats from the virtual file content
+    $: virtualFile = $fileStore.openFiles.get(filepath);
+    $: content = virtualFile?.content || '';
 
-    function calculateDiffStats(content: string) {
-        const lines = content.split('\n');
-        let added = 0;
-        let removed = 0;
-
-        for (const line of lines) {
-            if (line.startsWith('+') && !line.startsWith('+++')) {
-                added++;
-            } else if (line.startsWith('-') && !line.startsWith('---')) {
-                removed++;
+    // Parse the diff stats from the first line which should be in JSON format
+    $: stats = (() => {
+        try {
+            const firstLine = content.split('\n')[0];
+            if (firstLine.startsWith('{"stats":')) {
+                const data = JSON.parse(firstLine);
+                return {
+                    added: data.stats.added || 0,
+                    removed: data.stats.deleted || 0,
+                    modified: data.stats.modified || 0
+                };
             }
+        } catch (e) {
+            console.error('Failed to parse diff stats:', e);
         }
-
-        return { added, removed };
-    }
+        return { added: 0, removed: 0, modified: 0 };
+    })();
 </script>
 
 <div class="flex items-center px-4 py-1.5 bg-gray-900 border-b border-gray-700 sticky top-0 z-10">
