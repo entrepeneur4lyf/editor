@@ -3,27 +3,11 @@
     import { gitStore } from "@/stores/gitStore";
     import GitStatusItem from "./GitStatusItem.svelte";
     import Modal from "@/lib/components/Modal.svelte";
-
-    function compareFiles(a: string, b: string) {
-        const aName = a.split('/').pop() || '';
-        const bName = b.split('/').pop() || '';
-        
-        // Helper to check if string starts with dot or number
-        const startsWithDotOrNumber = (str: string) => /^[.0-9]/.test(str);
-        
-        const aHasDotOrNumber = startsWithDotOrNumber(aName);
-        const bHasDotOrNumber = startsWithDotOrNumber(bName);
-        
-        // If one has dot/number and other doesn't, prioritize dot/number
-        if (aHasDotOrNumber && !bHasDotOrNumber) return -1;
-        if (!aHasDotOrNumber && bHasDotOrNumber) return 1;
-        
-        // Otherwise, normal alphabetical sort
-        return a.localeCompare(b);
-    }
+    import { sortGitFiles } from "@/lib/utils/gitSort";
 
     $: unstagedChanges = $gitStore.gitStatus?.filter((item) => !item.staged)
-        .sort((a, b) => compareFiles(a.file, b.file)) || [];
+        ? sortGitFiles($gitStore.gitStatus.filter((item) => !item.staged), $gitStore.hierarchicalView)
+        : [];
 
     let showDiscardModal = false;
     let fileToDiscard: string | null = null;
