@@ -51,7 +51,8 @@
             <File class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
         {/if}
         <span class="text-gray-300 truncate flex-1" title={item.file}>
-            {item.file}
+            {item.file.split('/').pop()}
+            <span class="text-gray-500 ml-1">{item.file.split('/').slice(0, -1).join('/')}</span>
         </span>
         <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {#if isStaged}
